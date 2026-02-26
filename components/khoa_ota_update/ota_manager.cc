@@ -977,11 +977,31 @@ void OtaManager::NotifyProgress(OtaState state, int percent, size_t downloaded,
 
 // ==================== Tiện ích ====================
 
-/// Ghép URL gốc server từ IP hoặc giữ nguyên nếu đã có http://
+/// Ghép URL gốc server từ IP hoặc domain
+/// IP (192.168.1.2) → thêm port 8080
+/// Domain (ota.vibohub.com) → KHÔNG thêm port (reverse proxy xử lý)
+/// URL đầy đủ (http://...) → giữ nguyên
 std::string OtaManager::BuildBaseUrl(const std::string& input) {
     if (input.empty()) return "";
+    // Đã có scheme → giữ nguyên
     if (input.find("http") != std::string::npos) return input;
-    return "http://" + input + ":8080";
+
+    // Kiểm tra input có phải IP không (chỉ chứa số và dấu chấm)
+    bool is_ip = true;
+    for (char c : input) {
+        if (!isdigit(c) && c != '.') {
+            is_ip = false;
+            break;
+        }
+    }
+
+    if (is_ip) {
+        // IP → thêm port mặc định
+        return "http://" + input + ":8080";
+    } else {
+        // Domain → không thêm port (reverse proxy sẽ xử lý)
+        return "http://" + input;
+    }
 }
 
 // ==================== Dùng nhanh ====================
