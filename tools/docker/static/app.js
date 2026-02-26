@@ -351,58 +351,6 @@ function uploadFirmware() {
 }
 
 // ============================================================
-// Version Editor
-// ============================================================
-
-function showVersionEditor() {
-  const editor = document.getElementById("versionEditor");
-  const currentVersion = document.getElementById("serverVersion").textContent;
-  document.getElementById("inputNewVersion").value =
-    currentVersion !== "-" ? currentVersion : "";
-  editor.style.display = "block";
-  document.getElementById("inputNewVersion").focus();
-}
-
-function hideVersionEditor() {
-  document.getElementById("versionEditor").style.display = "none";
-}
-
-function submitVersion() {
-  const newVersion = document.getElementById("inputNewVersion").value.trim();
-  if (!newVersion) {
-    alert("Vui lòng nhập version!");
-    return;
-  }
-
-  fetch("/api/set-version", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ version: newVersion }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.ok) {
-        hideVersionEditor();
-        fetchApiData();
-      } else {
-        alert("Lỗi: " + (data.reason || "Unknown"));
-      }
-    })
-    .catch((err) => alert("Lỗi kết nối: " + err));
-}
-
-// Enter key trong version input
-document.addEventListener("DOMContentLoaded", function () {
-  const input = document.getElementById("inputNewVersion");
-  if (input) {
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") submitVersion();
-      if (e.key === "Escape") hideVersionEditor();
-    });
-  }
-});
-
-// ============================================================
 // Khởi tạo và polling
 // ============================================================
 

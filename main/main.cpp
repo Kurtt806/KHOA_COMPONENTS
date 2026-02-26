@@ -50,7 +50,7 @@ extern "C" void app_main(void)
                 break;
             case WifiEvent::Connected:
                 ESP_LOGI(TAG, "Da ket noi WiFi thanh cong!");
-                // Trigger OTA immediately upon receiving IP
+                // Gọi OTA ngay khi có IP
                 OtaManager::GetInstance().CheckOnBoot(
                     WifiManager::GetInstance().GetOtaUrl(), 
                     WifiManager::GetInstance().GetViboKey()

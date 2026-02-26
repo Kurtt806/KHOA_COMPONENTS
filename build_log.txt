@@ -1,0 +1,38 @@
+﻿python.exe : Setting 
+IDF_PATH environment 
+variable: 
+C:\esp\v5.5.2\esp-idf
+At line:1 char:1
++ & 'C:\Espressif\tools\py
+thon\v5.5.2\venv\Scripts\p
+ython.exe' 'C:\esp\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (S  
+  etting IDF_PAT...\v5.   
+ 5.2\esp-idf:String) [    
+], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+ERROR: C:\Espressif\python
+_env\idf5.5_py3.13_env\Scr
+ipts\python.exe doesn't 
+exist! Please run the 
+install script or 
+"idf_tools.py 
+install-python-env" in 
+order to create it
+
+fatal: bad config line 2 
+in file C:/esp/v5.5.2/esp-
+idf/.git/modules/component
+s/bt/controller/lib_esp32/
+config
+WARNING: Git version 
+unavailable, reading from 
+source
+ESP-IDF v5.5.2

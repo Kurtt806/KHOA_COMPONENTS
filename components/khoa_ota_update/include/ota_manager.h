@@ -61,7 +61,7 @@ struct OtaConfig {
     std::string url;                            // URL gốc server (VD: http://192.168.1.2:8080)
     std::string device_token;                   // Token của thiết bị (VIBO-KEY) để xác thực
     std::string cert_pem;                       // Chứng chỉ CA (PEM) cho HTTPS, rỗng = bỏ qua xác thực SSL
-    int timeout_ms = 30000;                     // Timeout kết nối HTTP (ms)
+    int timeout_ms = 60000;                     // Timeout kết nối HTTP (ms) - 60s cho HTTPS qua Cloudflare
     int recv_timeout_ms = 10000;                // Timeout nhận dữ liệu (ms)
     int poll_interval_ms = 5000;                // Khoảng thời gian polling chờ admin duyệt (ms)
     int approval_timeout_ms = 300000;           // Timeout tổng chờ duyệt: 5 phút (ms)

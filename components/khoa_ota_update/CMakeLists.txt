@@ -1,5 +1,9 @@
 set(sources
-    "ota_manager.cc")
+    "ota_core.cc"
+    "ota_version.cc"
+    "ota_token.cc"
+    "ota_download.cc"
+    "ota_boot.cc")
 
 idf_component_register(SRCS "${sources}"
                     INCLUDE_DIRS "include"

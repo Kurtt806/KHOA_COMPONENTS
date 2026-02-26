@@ -216,14 +216,6 @@ async def _stream_firmware(request: Request, filepath: str):
                     sent += len(chunk)
                     percent = int((sent * 100) / file_size)
 
-                    # Log terminal mỗi ~10%
-                    if percent != last_percent and percent % 10 == 0:
-                        last_percent = percent
-                        elapsed = time.time() - start_time
-                        speed = sent / elapsed if elapsed > 0 else 0
-                        bar = '█' * (percent // 5) + '░' * (20 - percent // 5)
-                        print(f"\r   [{bar}] {percent:3d}% | {format_size(sent)}/{format_size(file_size)} | {format_size(int(speed))}/s", end='', flush=True)
-
                     # Update web UI tracking mỗi 0.25s
                     cur_time = time.time()
                     if cur_time - last_update_time > 0.25:

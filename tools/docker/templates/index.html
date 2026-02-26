@@ -27,7 +27,7 @@
             <div class="card stat-card">
                 <div class="stat-label">Current Version</div>
                 <div class="stat-value version" id="serverVersion">-</div>
-                <button class="btn btn-version-edit" id="btnEditVersion" onclick="showVersionEditor()">✏️ Đổi</button>
+                <!-- Nút chỉnh sửa version bằng tay đã được xóa -->
             </div>
             <div class="card stat-card">
                 <div class="stat-label">Auto Checks</div>
@@ -36,18 +36,6 @@
             <div class="card stat-card">
                 <div class="stat-label">Downloads</div>
                 <div class="stat-value count" id="downloadCount">0</div>
-            </div>
-        </div>
-
-        <!-- Version Editor (ẩn mặc định) -->
-        <div class="card version-editor" id="versionEditor" style="display: none;">
-            <div class="version-editor-content">
-                <label>📝 Đổi Version Firmware:</label>
-                <div class="version-editor-form">
-                    <input type="text" id="inputNewVersion" placeholder="VD: 2.0.0" class="input-field">
-                    <button class="btn btn-approve" onclick="submitVersion()">Xác nhận</button>
-                    <button class="btn btn-deny" onclick="hideVersionEditor()">Hủy</button>
-                </div>
             </div>
         </div>
 
