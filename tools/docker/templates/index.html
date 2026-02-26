@@ -27,6 +27,7 @@
             <div class="card stat-card">
                 <div class="stat-label">Current Version</div>
                 <div class="stat-value version" id="serverVersion">-</div>
+                <button class="btn btn-version-edit" id="btnEditVersion" onclick="showVersionEditor()">✏️ Đổi</button>
             </div>
             <div class="card stat-card">
                 <div class="stat-label">Auto Checks</div>
@@ -36,6 +37,58 @@
                 <div class="stat-label">Downloads</div>
                 <div class="stat-value count" id="downloadCount">0</div>
             </div>
+        </div>
+
+        <!-- Version Editor (ẩn mặc định) -->
+        <div class="card version-editor" id="versionEditor" style="display: none;">
+            <div class="version-editor-content">
+                <label>📝 Đổi Version Firmware:</label>
+                <div class="version-editor-form">
+                    <input type="text" id="inputNewVersion" placeholder="VD: 2.0.0" class="input-field">
+                    <button class="btn btn-approve" onclick="submitVersion()">Xác nhận</button>
+                    <button class="btn btn-deny" onclick="hideVersionEditor()">Hủy</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Firmware -->
+        <div class="section-title">
+            <h2>📤 Upload Firmware</h2>
+        </div>
+        <div class="card">
+            <div class="upload-zone" id="uploadZone">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Kéo thả file <strong>.bin</strong> vào đây hoặc</div>
+                <label class="btn btn-upload" for="firmwareFileInput">Chọn file</label>
+                <input type="file" id="firmwareFileInput" accept=".bin" style="display: none;">
+                <div class="upload-hint">Chỉ chấp nhận file .bin (firmware ESP32)</div>
+            </div>
+
+            <!-- Upload form (hiện sau khi chọn file) -->
+            <div class="upload-form" id="uploadForm" style="display: none;">
+                <div class="upload-file-info">
+                    <span class="upload-filename" id="uploadFilename">-</span>
+                    <span class="upload-filesize" id="uploadFilesize">-</span>
+                </div>
+                <div class="upload-version-row">
+                    <label>Version:</label>
+                    <input type="text" id="uploadVersion" placeholder="VD: 2.0.0 (để trống = giữ nguyên)" class="input-field">
+                </div>
+                <div class="upload-actions">
+                    <button class="btn btn-approve" id="btnUpload" onclick="uploadFirmware()">⬆️ Upload lên Server</button>
+                    <button class="btn btn-deny" onclick="cancelUpload()">Hủy</button>
+                </div>
+                <!-- Upload progress -->
+                <div class="upload-progress" id="uploadProgress" style="display: none;">
+                    <div class="progress-container" style="max-width: 100%;">
+                        <div class="progress-bar" id="uploadProgressBar" style="width: 0%"></div>
+                    </div>
+                    <span class="small-text" id="uploadStatus">Đang tải lên...</span>
+                </div>
+            </div>
+
+            <!-- Upload result -->
+            <div class="upload-result" id="uploadResult" style="display: none;"></div>
         </div>
 
         <div class="section-title">

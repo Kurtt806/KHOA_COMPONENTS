@@ -304,3 +304,215 @@ a:hover {
   width: 0%;
   transition: width 0.3s ease;
 }
+
+/* ============================================================
+   Upload Firmware Zone
+   ============================================================ */
+
+.upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem;
+  border: 2px dashed #334155;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  gap: 0.6rem;
+}
+
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.05);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+  opacity: 0.8;
+}
+
+.upload-text {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.upload-hint {
+  color: #475569;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+
+.btn-upload {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-family: "Inter", sans-serif;
+}
+
+.btn-upload:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Upload Form (hiện sau khi chọn file) */
+
+.upload-form {
+  padding: 1.2rem 0 0;
+}
+
+.upload-file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  background: #0f172a;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.upload-filename {
+  font-weight: 600;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+}
+
+.upload-filesize {
+  color: #fb923c;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.upload-version-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.upload-version-row label {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.upload-progress {
+  margin-top: 0.8rem;
+}
+
+/* Upload Result */
+
+.upload-result {
+  margin-top: 1rem;
+}
+
+.upload-success {
+  padding: 1rem;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  color: #86efac;
+  font-weight: 600;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   Version Editor
+   ============================================================ */
+
+.version-editor {
+  margin-bottom: 1.5rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.version-editor-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.version-editor-content label {
+  color: #94a3b8;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.version-editor-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.btn-version-edit {
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  background: #334155;
+  color: #94a3b8;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: "Inter", sans-serif;
+}
+
+.btn-version-edit:hover {
+  background: #475569;
+  color: #f1f5f9;
+}
+
+/* ============================================================
+   Input Field chung
+   ============================================================ */
+
+.input-field {
+  padding: 0.5rem 0.8rem;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #f1f5f9;
+  font-size: 0.9rem;
+  font-family: "Inter", sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+  flex: 1;
+  min-width: 120px;
+}
+
+.input-field:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+}
+
+.input-field::placeholder {
+  color: #475569;
+}

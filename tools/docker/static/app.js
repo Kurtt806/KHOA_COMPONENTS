@@ -27,6 +27,13 @@ function formatFlash(kb) {
   return kb + " KB";
 }
 
+// Chuyển bytes sang đơn vị dễ đọc
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
 function renderDevices(devices, versionClients, activeDownloads) {
   const tableBody = document
     .getElementById("pendingTable")
@@ -35,11 +42,8 @@ function renderDevices(devices, versionClients, activeDownloads) {
 
   let hasAlert = false;
 
-  // Create a unified list of devices by IP
-  // Some devices might only have checked the version, others might have requested OTA
   const allDevicesMap = {};
 
-  // First, process devices that have requested OTA
   if (devices) {
     Object.entries(devices).forEach(([mac, dev]) => {
       allDevicesMap[dev.ip] = {
@@ -58,13 +62,10 @@ function renderDevices(devices, versionClients, activeDownloads) {
     });
   }
 
-  // Next, merge in devices that only checked version
   if (versionClients) {
     Object.entries(versionClients).forEach(([ip, info]) => {
       if (allDevicesMap[ip]) {
         allDevicesMap[ip].version_checks = info.count;
-        // If the version check is newer than the OTA request, update timestamp?
-        // Let's keep the OTA timestamp if it exists, as it's more relevant.
       } else {
         allDevicesMap[ip] = {
           mac: "-",
@@ -74,7 +75,7 @@ function renderDevices(devices, versionClients, activeDownloads) {
           app_name: "-",
           app_version: "-",
           flash_kb: 0,
-          ota_status: "none", // Just checked version
+          ota_status: "none",
           type: "none",
           timestamp: info.last_time,
           version_checks: info.count,
@@ -92,7 +93,6 @@ function renderDevices(devices, versionClients, activeDownloads) {
     return;
   }
 
-  // Sort by timestamp or status
   deviceAnysize.sort((a, b) => {
     if (a.ota_status === "pending" && b.ota_status !== "pending") return -1;
     if (a.ota_status !== "pending" && b.ota_status === "pending") return 1;
@@ -105,7 +105,6 @@ function renderDevices(devices, versionClients, activeDownloads) {
 
     const row = document.createElement("tr");
 
-    // Progress UI
     let progressHtml = "";
     if (isDownloading) {
       const dl = activeDownloads[dev.ip];
@@ -119,7 +118,6 @@ function renderDevices(devices, versionClients, activeDownloads) {
       progressHtml = `<span class="small-text">🔍 Đã kiểm tra version: ${dev.version_checks} lần</span>`;
     }
 
-    // Status Badge
     let badgeHtml = "";
     if (isDownloading)
       badgeHtml = '<span class="badge downloading">🔄 Đang cập nhật OTA</span>';
@@ -135,7 +133,6 @@ function renderDevices(devices, versionClients, activeDownloads) {
       badgeHtml =
         '<span class="badge" style="background: #334155; color: #94a3b8;">Hiển thị Version</span>';
 
-    // Action Buttons
     let btnHtml = "-";
     if (dev.ota_status === "pending" && !isDownloading) {
       if (dev.type === "no_key") {
@@ -215,6 +212,197 @@ function handleAction(mac, action) {
     });
 }
 
-// Initial fetch and polling every 1.5 seconds for snappier progress bar
+// ============================================================
+// Upload Firmware
+// ============================================================
+
+let selectedFile = null;
+
+// Xử lý chọn file qua input
+document.addEventListener("DOMContentLoaded", function () {
+  const fileInput = document.getElementById("firmwareFileInput");
+  const uploadZone = document.getElementById("uploadZone");
+
+  fileInput.addEventListener("change", function (e) {
+    if (e.target.files.length > 0) {
+      handleFileSelected(e.target.files[0]);
+    }
+  });
+
+  // Drag and Drop
+  uploadZone.addEventListener("dragover", function (e) {
+    e.preventDefault();
+    uploadZone.classList.add("drag-over");
+  });
+
+  uploadZone.addEventListener("dragleave", function (e) {
+    e.preventDefault();
+    uploadZone.classList.remove("drag-over");
+  });
+
+  uploadZone.addEventListener("drop", function (e) {
+    e.preventDefault();
+    uploadZone.classList.remove("drag-over");
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.endsWith(".bin")) {
+        handleFileSelected(file);
+      } else {
+        alert("Chỉ chấp nhận file .bin!");
+      }
+    }
+  });
+});
+
+// Hiển thị thông tin file đã chọn
+function handleFileSelected(file) {
+  selectedFile = file;
+  document.getElementById("uploadFilename").textContent = "📄 " + file.name;
+  document.getElementById("uploadFilesize").textContent = formatBytes(
+    file.size,
+  );
+  document.getElementById("uploadForm").style.display = "block";
+  document.getElementById("uploadZone").style.display = "none";
+  document.getElementById("uploadResult").style.display = "none";
+  document.getElementById("uploadProgress").style.display = "none";
+}
+
+// Hủy chọn file
+function cancelUpload() {
+  selectedFile = null;
+  document.getElementById("uploadForm").style.display = "none";
+  document.getElementById("uploadZone").style.display = "flex";
+  document.getElementById("firmwareFileInput").value = "";
+  document.getElementById("uploadVersion").value = "";
+}
+
+// Upload firmware lên server qua XHR (có progress)
+function uploadFirmware() {
+  if (!selectedFile) return;
+
+  const version = document.getElementById("uploadVersion").value.trim();
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+  formData.append("version", version);
+
+  const btnUpload = document.getElementById("btnUpload");
+  btnUpload.disabled = true;
+  btnUpload.textContent = "⏳ Đang upload...";
+
+  document.getElementById("uploadProgress").style.display = "block";
+
+  const xhr = new XMLHttpRequest();
+
+  // Theo dõi tiến trình upload
+  xhr.upload.addEventListener("progress", function (e) {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      document.getElementById("uploadProgressBar").style.width = percent + "%";
+      document.getElementById("uploadStatus").textContent =
+        `Đang tải lên: ${percent}% (${formatBytes(e.loaded)} / ${formatBytes(e.total)})`;
+    }
+  });
+
+  xhr.addEventListener("load", function () {
+    btnUpload.disabled = false;
+    btnUpload.textContent = "⬆️ Upload lên Server";
+
+    if (xhr.status === 200) {
+      const data = JSON.parse(xhr.responseText);
+      if (data.ok) {
+        document.getElementById("uploadResult").style.display = "block";
+        document.getElementById("uploadResult").innerHTML = `
+          <div class="upload-success">
+            ✅ Upload thành công!<br>
+            <span class="small-text">
+              File: <strong>${data.filename}</strong> | 
+              Size: <strong>${data.size}</strong> | 
+              MD5: <code>${data.md5}</code> |
+              Version: <strong>${data.version}</strong>
+            </span>
+          </div>
+        `;
+        // Reset form
+        selectedFile = null;
+        document.getElementById("uploadForm").style.display = "none";
+        document.getElementById("uploadZone").style.display = "flex";
+        document.getElementById("firmwareFileInput").value = "";
+        document.getElementById("uploadVersion").value = "";
+        // Refresh data
+        fetchApiData();
+      } else {
+        alert("Lỗi: " + (data.reason || "Unknown error"));
+      }
+    } else {
+      alert("Upload thất bại! HTTP " + xhr.status);
+    }
+  });
+
+  xhr.addEventListener("error", function () {
+    btnUpload.disabled = false;
+    btnUpload.textContent = "⬆️ Upload lên Server";
+    alert("Lỗi kết nối khi upload!");
+  });
+
+  xhr.open("POST", "/api/upload-firmware");
+  xhr.send(formData);
+}
+
+// ============================================================
+// Version Editor
+// ============================================================
+
+function showVersionEditor() {
+  const editor = document.getElementById("versionEditor");
+  const currentVersion = document.getElementById("serverVersion").textContent;
+  document.getElementById("inputNewVersion").value =
+    currentVersion !== "-" ? currentVersion : "";
+  editor.style.display = "block";
+  document.getElementById("inputNewVersion").focus();
+}
+
+function hideVersionEditor() {
+  document.getElementById("versionEditor").style.display = "none";
+}
+
+function submitVersion() {
+  const newVersion = document.getElementById("inputNewVersion").value.trim();
+  if (!newVersion) {
+    alert("Vui lòng nhập version!");
+    return;
+  }
+
+  fetch("/api/set-version", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ version: newVersion }),
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        hideVersionEditor();
+        fetchApiData();
+      } else {
+        alert("Lỗi: " + (data.reason || "Unknown"));
+      }
+    })
+    .catch((err) => alert("Lỗi kết nối: " + err));
+}
+
+// Enter key trong version input
+document.addEventListener("DOMContentLoaded", function () {
+  const input = document.getElementById("inputNewVersion");
+  if (input) {
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") submitVersion();
+      if (e.key === "Escape") hideVersionEditor();
+    });
+  }
+});
+
+// ============================================================
+// Khởi tạo và polling
+// ============================================================
+
 fetchApiData();
 setInterval(fetchApiData, 1500);
