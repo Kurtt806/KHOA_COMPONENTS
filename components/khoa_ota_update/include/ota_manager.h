@@ -158,7 +158,6 @@ private:
 
     /// Hash VIBO-KEY bằng FNV-1a 64-bit, trả về chuỗi hex 16 ký tự
     static std::string HashToken64(const std::string& token);
-    static int CompareVersion(const std::string& a, const std::string& b);
 
     /// Thực hiện quá trình tải và ghi firmware OTA nội bộ
     esp_err_t PerformOta();

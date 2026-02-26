@@ -31,7 +31,7 @@ static esp_err_t PollTokenStatus(const std::string& base_url, const std::string&
                                   int timeout_ms, const std::string& cert_pem, std::string& out_firmware_url) {
     std::string poll_url = base_url;
     if (!poll_url.empty() && poll_url.back() == '/') poll_url.pop_back();
-    poll_url += "/token-status?mac=" + mac;
+    poll_url += "/token-status";
 
     // Cấu hình HTTP client
     esp_http_client_config_t http_config = {};
@@ -54,6 +54,8 @@ static esp_err_t PollTokenStatus(const std::string& base_url, const std::string&
         free(ctx.buf);
         return ESP_FAIL;
     }
+
+    esp_http_client_set_header(client, "x-device-mac", mac.c_str());
 
     esp_err_t err = esp_http_client_perform(client);
     int status_code = esp_http_client_get_status_code(client);

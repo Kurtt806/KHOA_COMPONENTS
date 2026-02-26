@@ -33,7 +33,6 @@ def _auto_configure_from_env():
     config.bind = os.environ.get("OTA_BIND", "0.0.0.0")
     config.ota_token = os.environ.get("OTA_TOKEN", "") or None
     config.ota_version = os.environ.get("OTA_VERSION", "0.0.0")
-    # URL public cho ESP32 (VD: http://ota.vibohub.com - không có port)
     config.base_url = os.environ.get("OTA_BASE_URL", "") or None
 
     fw_env = os.environ.get("OTA_FIRMWARE")
@@ -96,9 +95,9 @@ async def startup_event():
     local_ip = get_local_ip()
 
     print()
-    print(f"{Colors.BOLD}{Colors.BLUE}╔══════════════════════════════════════════════════════════╗{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.BLUE}║   🔧  ESP32 OTA Server (FastAPI + Docker)  🔧          ║{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.BLUE}╚══════════════════════════════════════════════════════════╝{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.BLUE}╔══════════════════════════════════════════════════╗{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.BLUE}║     ESP32 OTA Server (FastAPI + Docker)          ║{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.BLUE}╚══════════════════════════════════════════════════╝{Colors.END}")
     print()
     log_info(f"Server:     {Colors.BOLD}http://{local_ip}:{config.port}{Colors.END}")
     log_info(f"Bind:       {config.bind}:{config.port}")

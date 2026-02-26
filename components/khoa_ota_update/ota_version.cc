@@ -5,22 +5,6 @@
 
 #include "ota_common.h"
 
-// ==================== So sánh phiên bản ====================
-
-/// So sánh 2 chuỗi version theo semantic versioning (VD: "1.2.3" vs "1.3.0")
-/// Trả về: >0 nếu a > b, 0 nếu a == b, <0 nếu a < b
-int OtaManager::CompareVersion(const std::string& a, const std::string& b) {
-    int a_major = 0, a_minor = 0, a_patch = 0;
-    int b_major = 0, b_minor = 0, b_patch = 0;
-
-    sscanf(a.c_str(), "%d.%d.%d", &a_major, &a_minor, &a_patch);
-    sscanf(b.c_str(), "%d.%d.%d", &b_major, &b_minor, &b_patch);
-
-    if (a_major != b_major) return a_major - b_major;
-    if (a_minor != b_minor) return a_minor - b_minor;
-    return a_patch - b_patch;
-}
-
 // ==================== Bước 1: Lấy thông tin version từ server ====================
 
 /// Gọi GET /version.json để lấy version mới nhất
@@ -31,9 +15,9 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
         version_url.pop_back();
     }
     std::string current_ver = GetCurrentVersion();
-    version_url += "/version.json?mac=" + GetMacString() + "&v=" + current_ver;
+    version_url += "/version.json";
 
-    ESP_LOGI(TAG, "[B1] Kiem tra phien ban tu: %s", version_url.c_str());
+    ESP_LOGI(TAG, "[B1] Kiem tra phien ban tu: %s (qua Headers)", version_url.c_str());
 
     // Buffer nhận response body
     HttpResponseCtx ctx = {};
@@ -57,6 +41,10 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
         free(ctx.buf);
         return ESP_FAIL;
     }
+
+    // Gửi MAC và Version qua Header để bảo mật, tránh lộ trên URL proxy logs
+    esp_http_client_set_header(client, "x-device-mac", GetMacString().c_str());
+    esp_http_client_set_header(client, "x-device-version", current_ver.c_str());
 
     esp_err_t err = esp_http_client_perform(client);
     int status_code = esp_http_client_get_status_code(client);

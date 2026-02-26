@@ -33,6 +33,8 @@ router = APIRouter()
 @router.get("/version.json")
 async def serve_version_info(request: Request, mac: str = "", v: str = ""):
     """ESP32 gọi endpoint này để kiểm tra có firmware mới không"""
+    mac = request.headers.get("x-device-mac", mac)
+    v = request.headers.get("x-device-version", v)
     stats["version_check_count"] += 1
     client_ip = request.client.host
     version = config.ota_version or "0.0.0"
@@ -153,8 +155,9 @@ async def handle_validate_token(request: Request):
 
 
 @router.get("/token-status")
-async def handle_token_status(mac: str = ""):
-    """ESP polling: GET /token-status?mac=xxx → trả trạng thái duyệt của admin"""
+async def handle_token_status(request: Request, mac: str = ""):
+    """ESP polling: GET /token-status (hoặc qua header x-device-mac) → trả trạng thái duyệt của admin"""
+    mac = request.headers.get("x-device-mac", mac)
     if not mac:
         return JSONResponse(content={"status": "error"}, status_code=400)
 

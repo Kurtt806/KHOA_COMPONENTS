@@ -74,4 +74,18 @@ static std::string GetMacString() {
     return std::string(buf);
 }
 
+/// So sánh 2 chuỗi version theo semantic versioning (VD: "1.2.3" vs "1.3.0")
+/// Trả về: >0 nếu a > b, 0 nếu a == b, <0 nếu a < b
+static inline int CompareVersion(const std::string& a, const std::string& b) {
+    int a_major = 0, a_minor = 0, a_patch = 0;
+    int b_major = 0, b_minor = 0, b_patch = 0;
+
+    sscanf(a.c_str(), "%d.%d.%d", &a_major, &a_minor, &a_patch);
+    sscanf(b.c_str(), "%d.%d.%d", &b_major, &b_minor, &b_patch);
+
+    if (a_major != b_major) return a_major - b_major;
+    if (a_minor != b_minor) return a_minor - b_minor;
+    return a_patch - b_patch;
+}
+
 #endif // _OTA_COMMON_H_

@@ -6,64 +6,81 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <style>
+        <style>
         :root {
-            /* VS Code Dark Theme Colors with Moss Green Accent */
-            --bg-color: #1e1e1e;
-            --text-primary: #cccccc;
-            --accent-color: #608b4e;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1e2f 100%);
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --accent-color: #10b981;
             --card-bg: #252526;
-            --border-color: #454545;
         }
 
         body {
             font-family: 'Inter', 'Segoe UI', sans-serif;
             margin: 0;
             padding: 0;
-            background-color: var(--bg-color);
+            background: var(--bg-gradient);
             color: var(--text-primary);
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
+        }
+
+        /* Background glow effect */
+        body::before {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            animation: pulseGlow 4s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 1; }
         }
 
         .card {
-            background-color: var(--card-bg);
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--border-color);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 50px 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
             text-align: center;
-            max-width: 400px;
+            max-width: 420px;
             width: 90%;
-            animation: fadeIn 0.5s ease-out;
+            animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        @keyframes cardAppear {
+            from { opacity: 0; transform: translateY(30px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .checkmark {
-            width: 100px;
-            height: 100px;
-            margin-bottom: 20px;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 30px;
+            filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));
         }
 
         .checkmark__circle {
             stroke: var(--accent-color);
-            stroke-width: 2;
+            stroke-width: 3;
             stroke-miterlimit: 10;
             fill: none;
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
             animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
         }
 
@@ -71,15 +88,15 @@
             transform-origin: 50% 50%;
             stroke-dasharray: 48;
             stroke-dashoffset: 48;
-            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
             stroke: var(--accent-color);
-            stroke-width: 3;
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         @keyframes stroke {
-            100% {
-                stroke-dashoffset: 0;
-            }
+            100% { stroke-dashoffset: 0; }
         }
 
         .message {
@@ -89,12 +106,43 @@
 
         .message p {
             margin: 8px 0;
+            animation: textFadeIn 0.5s ease-out 0.8s forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        @keyframes textFadeIn {
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .primary-text {
             color: #fff;
-            font-weight: 600;
-            font-size: 18px;
+            font-weight: 700;
+            font-size: 24px;
+            letter-spacing: -0.5px;
+        }
+        
+        .secondary-text {
+            color: #94a3b8;
+            font-size: 15px;
+            margin-top: 15px;
+        }
+        
+        .loader {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #94a3b8;
+            margin-left: 5px;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .loader:nth-child(1) { animation-delay: -0.32s; }
+        .loader:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
         }
     </style>
 </head>
@@ -106,9 +154,9 @@
             <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
         </svg>
 
-        <div class="message">
+                <div class="message">
             <p class="primary-text">Cấu hình thành công!</p>
-            <p style="color: #888; font-size: 14px; margin-top: 15px;">Thiết bị đang khởi động lại...</p>
+            <p class="secondary-text">Thiết bị đang khởi động lại<span class="loader"></span><span class="loader"></span><span class="loader"></span></p>
         </div>
     </div>
 
