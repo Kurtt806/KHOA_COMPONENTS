@@ -1,0 +1,3 @@
+# Thư mục chứa file firmware .bin
+# Đặt file .bin vào đây khi chạy local
+# Khi deploy Docker, dùng volume mount hoặc docker cp

@@ -76,3 +76,9 @@ Desktop.ini
 *.workspace # General workspace files, can be from various tools
 *.suo       # Visual Studio Solution User Options
 *.sln.docstates # Visual Studio
+
+# ── Docker OTA Server ──
+# Firmware binaries trong docker (quá lớn cho git, mount volume khi deploy)
+tools/docker/firmware/*.bin
+# Runtime data (thiết bị đã duyệt - sinh ra khi server chạy)
+tools/ota_devices.json
