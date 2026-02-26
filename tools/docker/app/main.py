@@ -132,7 +132,7 @@ async def startup_event():
     log_info(f"   B3: GET /firmware.bin  → Download firmware")
     print(f"{Colors.CYAN}{'─' * 60}{Colors.END}")
     print()
-    log_info(f"Web UI:     {Colors.BOLD}http://{local_ip}:{config.port}/{Colors.END}")
+    log_info(f"Web UI:     {Colors.BOLD}http://{local_ip}:{config.port}/dashboard{Colors.END}")
     log_info(f"API Docs:   {Colors.BOLD}http://{local_ip}:{config.port}/docs{Colors.END}")
     print()
 

@@ -12,7 +12,7 @@ from app.config import TEMPLATES_DIR
 router = APIRouter()
 
 
-@router.get("/", response_class=HTMLResponse)
+@router.get("/dashboard", response_class=HTMLResponse)
 async def serve_dashboard():
     """Phục vụ trang Dashboard Web UI (index.html)"""
     html_path = os.path.join(TEMPLATES_DIR, 'index.html')

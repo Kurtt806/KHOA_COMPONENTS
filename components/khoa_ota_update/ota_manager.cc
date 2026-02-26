@@ -21,6 +21,9 @@
 #include "cJSON.h"
 #include "esp_mac.h"
 
+// Khai báo hàm C gắn bundle chứng chỉ SSL mặc định của ESP-IDF
+extern "C" esp_err_t esp_crt_bundle_attach(void *conf);
+
 static const char *TAG = "OTA_MGR";
 
 // ==================== Singleton ====================
@@ -104,67 +107,85 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
 
     ESP_LOGI(TAG, "[B1] Kiem tra phien ban tu: %s", version_url.c_str());
 
+    // Buffer để nhận response body qua event handler
+    struct ResponseCtx {
+        char* buf;
+        int len;
+        int max;
+    };
+    ResponseCtx ctx = {};
+    ctx.max = 1024;
+    ctx.buf = (char*)calloc(1, ctx.max + 1);
+    if (!ctx.buf) return ESP_ERR_NO_MEM;
+
     esp_http_client_config_t http_config = {};
     http_config.url = version_url.c_str();
     http_config.timeout_ms = config_.timeout_ms;
     http_config.method = HTTP_METHOD_GET;
+    // Buffer lớn hơn để chứa header HTTPS response
+    http_config.buffer_size = 2048;
+    // Cho phép tự động follow redirect (301 → HTTPS)
+    http_config.max_redirection_count = 3;
+    http_config.user_data = &ctx;
+    // Event handler để nhận response body
+    http_config.event_handler = [](esp_http_client_event_t* evt) -> esp_err_t {
+        auto* c = (ResponseCtx*)evt->user_data;
+        if (evt->event_id == HTTP_EVENT_ON_DATA && c && c->buf) {
+            int copy = evt->data_len;
+            if (c->len + copy > c->max) copy = c->max - c->len;
+            if (copy > 0) {
+                memcpy(c->buf + c->len, evt->data, copy);
+                c->len += copy;
+            }
+        }
+        return ESP_OK;
+    };
 
-    // Cấu hình SSL
+    // Cấu hình SSL (cần cho redirect HTTP→HTTPS)
     if (!config_.cert_pem.empty()) {
         http_config.cert_pem = config_.cert_pem.c_str();
     } else {
-        http_config.crt_bundle_attach = nullptr;
+        // Dùng bundle chứng chỉ mặc định của ESP-IDF
+        http_config.crt_bundle_attach = esp_crt_bundle_attach;
         http_config.skip_cert_common_name_check = true;
     }
 
     esp_http_client_handle_t client = esp_http_client_init(&http_config);
     if (client == nullptr) {
         ESP_LOGE(TAG, "Khong the khoi tao HTTP client!");
+        free(ctx.buf);
         return ESP_FAIL;
     }
 
-    esp_err_t err = esp_http_client_open(client, 0);
+    // perform() tự xử lý redirect + HTTPS
+    esp_err_t err = esp_http_client_perform(client);
+    int status_code = esp_http_client_get_status_code(client);
+    esp_http_client_cleanup(client);
+
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Khong the ket noi server version: %s", esp_err_to_name(err));
-        esp_http_client_cleanup(client);
+        ESP_LOGE(TAG, "HTTP request that bai: %s", esp_err_to_name(err));
+        free(ctx.buf);
         return err;
     }
 
-    int content_length = esp_http_client_fetch_headers(client);
-    int status_code = esp_http_client_get_status_code(client);
-
     if (status_code != 200) {
         ESP_LOGE(TAG, "Server tra ve HTTP %d khi lay version!", status_code);
-        esp_http_client_close(client);
-        esp_http_client_cleanup(client);
+        free(ctx.buf);
         return ESP_FAIL;
     }
 
-    // Đọc response body (giới hạn 1KB cho JSON nhỏ)
-    int max_len = (content_length > 0 && content_length < 1024) ? content_length : 1024;
-    char* buffer = (char*)malloc(max_len + 1);
-    if (buffer == nullptr) {
-        esp_http_client_close(client);
-        esp_http_client_cleanup(client);
-        return ESP_ERR_NO_MEM;
-    }
-
-    int read_len = esp_http_client_read(client, buffer, max_len);
-    esp_http_client_close(client);
-    esp_http_client_cleanup(client);
-
-    if (read_len <= 0) {
+    if (ctx.len <= 0) {
         ESP_LOGE(TAG, "Khong doc duoc du lieu version!");
-        free(buffer);
+        free(ctx.buf);
         return ESP_FAIL;
     }
 
-    buffer[read_len] = '\0';
-    ESP_LOGI(TAG, "Response version: %s", buffer);
+    ctx.buf[ctx.len] = '\0';
+    ESP_LOGI(TAG, "Response version: %s", ctx.buf);
 
     // Parse JSON: {"version": "1.2.0", "firmware_url": "..."}
-    cJSON* root = cJSON_Parse(buffer);
-    free(buffer);
+    cJSON* root = cJSON_Parse(ctx.buf);
+    free(ctx.buf);
 
     if (root == nullptr) {
         ESP_LOGE(TAG, "Loi parse JSON version!");
@@ -223,50 +244,57 @@ static esp_err_t PollTokenStatus(const std::string& base_url, const std::string&
     http_config.url = poll_url.c_str();
     http_config.timeout_ms = timeout_ms;
     http_config.method = HTTP_METHOD_GET;
+    http_config.buffer_size = 2048;
+    http_config.max_redirection_count = 3;
+
+    struct ResponseCtx {
+        char* buf;
+        int len;
+        int max;
+    };
+    ResponseCtx ctx = {};
+    ctx.max = 256;
+    ctx.buf = (char*)calloc(1, ctx.max + 1);
+    if (!ctx.buf) return ESP_ERR_NO_MEM;
+
+    http_config.user_data = &ctx;
+    http_config.event_handler = [](esp_http_client_event_t* evt) -> esp_err_t {
+        auto* c = (ResponseCtx*)evt->user_data;
+        if (evt->event_id == HTTP_EVENT_ON_DATA && c && c->buf) {
+            int copy = evt->data_len;
+            if (c->len + copy > c->max) copy = c->max - c->len;
+            if (copy > 0) {
+                memcpy(c->buf + c->len, evt->data, copy);
+                c->len += copy;
+            }
+        }
+        return ESP_OK;
+    };
 
     if (!cert_pem.empty()) {
         http_config.cert_pem = cert_pem.c_str();
     } else {
-        http_config.crt_bundle_attach = nullptr;
+        http_config.crt_bundle_attach = esp_crt_bundle_attach;
         http_config.skip_cert_common_name_check = true;
     }
 
     esp_http_client_handle_t client = esp_http_client_init(&http_config);
-    if (client == nullptr) return ESP_FAIL;
-
-    esp_err_t err = esp_http_client_open(client, 0);
-    if (err != ESP_OK) {
-        esp_http_client_cleanup(client);
+    if (client == nullptr) {
+        free(ctx.buf);
         return ESP_FAIL;
     }
 
-    int content_length = esp_http_client_fetch_headers(client);
+    esp_err_t err = esp_http_client_perform(client);
     int status_code = esp_http_client_get_status_code(client);
-
-    if (status_code != 200) {
-        esp_http_client_close(client);
-        esp_http_client_cleanup(client);
-        return ESP_FAIL;
-    }
-
-    int max_len = (content_length > 0 && content_length < 256) ? content_length : 256;
-    char* resp = (char*)malloc(max_len + 1);
-    if (resp == nullptr) {
-        esp_http_client_close(client);
-        esp_http_client_cleanup(client);
-        return ESP_ERR_NO_MEM;
-    }
-
-    int read_len = esp_http_client_read(client, resp, max_len);
-    esp_http_client_close(client);
     esp_http_client_cleanup(client);
 
-    if (read_len <= 0) {
-        free(resp);
+    if (err != ESP_OK || status_code != 200 || ctx.len <= 0) {
+        free(ctx.buf);
         return ESP_FAIL;
     }
 
-    resp[read_len] = '\0';
+    ctx.buf[ctx.len] = '\0';
+    char* resp = ctx.buf; // alias to use below
 
     // Parse JSON: {"status": "pending"/"approved"/"denied"}
     cJSON* root = cJSON_Parse(resp);
@@ -367,61 +395,75 @@ esp_err_t OtaManager::ValidateToken() {
     http_config.url = validate_url.c_str();
     http_config.timeout_ms = config_.timeout_ms;
     http_config.method = HTTP_METHOD_POST;
+    http_config.buffer_size = 2048;
+    http_config.max_redirection_count = 3;
 
     if (!config_.cert_pem.empty()) {
         http_config.cert_pem = config_.cert_pem.c_str();
     } else {
-        http_config.crt_bundle_attach = nullptr;
+        http_config.crt_bundle_attach = esp_crt_bundle_attach;
         http_config.skip_cert_common_name_check = true;
+    }
+
+    struct ResponseCtx {
+        char* buf;
+        int len;
+        int max;
+    };
+    ResponseCtx ctx = {};
+    ctx.max = 512;
+    ctx.buf = (char*)calloc(1, ctx.max + 1);
+    
+    if (ctx.buf) {
+        http_config.user_data = &ctx;
+        http_config.event_handler = [](esp_http_client_event_t* evt) -> esp_err_t {
+            auto* c = (ResponseCtx*)evt->user_data;
+            if (evt->event_id == HTTP_EVENT_ON_DATA && c && c->buf) {
+                int copy = evt->data_len;
+                if (c->len + copy > c->max) copy = c->max - c->len;
+                if (copy > 0) {
+                    memcpy(c->buf + c->len, evt->data, copy);
+                    c->len += copy;
+                }
+            }
+            return ESP_OK;
+        };
     }
 
     esp_http_client_handle_t client = esp_http_client_init(&http_config);
     if (client == nullptr) {
         free(body_str);
+        if (ctx.buf) free(ctx.buf);
         return ESP_FAIL;
     }
 
     esp_http_client_set_header(client, "Content-Type", "application/json");
+    esp_http_client_set_post_field(client, body_str, body_len);
 
-    esp_err_t err = esp_http_client_open(client, body_len);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "[B2] Khong the ket noi server: %s", esp_err_to_name(err));
-        free(body_str);
-        esp_http_client_cleanup(client);
-        return err;
-    }
-
-    int written = esp_http_client_write(client, body_str, body_len);
-    free(body_str);
-
-    if (written < 0) {
-        esp_http_client_close(client);
-        esp_http_client_cleanup(client);
-        return ESP_FAIL;
-    }
-
-    int content_length = esp_http_client_fetch_headers(client);
+    esp_err_t err = esp_http_client_perform(client);
     int status_code = esp_http_client_get_status_code(client);
-
-    // Đọc response body để parse status
-    int resp_max = (content_length > 0 && content_length < 512) ? content_length : 512;
-    char* resp_buf = (char*)malloc(resp_max + 1);
-    int resp_read = 0;
-    if (resp_buf) {
-        resp_read = esp_http_client_read(client, resp_buf, resp_max);
-        if (resp_read > 0) resp_buf[resp_read] = '\0';
-    }
-
-    esp_http_client_close(client);
+    
+    // Đã xong POST, giải phóng body
+    free(body_str);
     esp_http_client_cleanup(client);
 
     ESP_LOGI(TAG, "[B2] Dang ky: HTTP %d", status_code);
 
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "[B2] Khong the ket noi server: %s", esp_err_to_name(err));
+        if (ctx.buf) free(ctx.buf);
+        return err;
+    }
+
     if (status_code != 200) {
         ESP_LOGE(TAG, "[B2] Server tu choi dang ky: HTTP %d", status_code);
-        free(resp_buf);
+        if (ctx.buf) free(ctx.buf);
         return ESP_ERR_INVALID_RESPONSE;
     }
+
+    char* resp_buf = ctx.buf;
+    int resp_read = ctx.len;
+    if (resp_buf) resp_buf[resp_read] = '\0';
 
     // Parse response: {"status": "pending"/"denied"}
     if (resp_buf && resp_read > 0) {
@@ -569,6 +611,9 @@ esp_err_t OtaManager::StartUpdate() {
     ESP_LOGI(TAG, "[B1] ✓ Co phien ban moi: %s → %s", 
              current_ver.c_str(), server_info.version.c_str());
 
+    // Chờ 1s để giải phóng tài nguyên SSL trước khi tạo connection mới
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
     // ===== BƯỚC 2: Xác thực token (bắt buộc) =====
     NotifyProgress(OtaState::ValidatingToken, 0, 0, 0, "Dang xac thuc token...");
 
@@ -652,12 +697,14 @@ esp_err_t OtaManager::PerformOta() {
     esp_http_client_config_t http_config = {};
     http_config.url = config_.url.c_str();
     http_config.timeout_ms = config_.timeout_ms;
+    http_config.buffer_size = 2048;
+    http_config.max_redirection_count = 3;
 
     // Cấu hình SSL nếu có chứng chỉ
     if (!config_.cert_pem.empty()) {
         http_config.cert_pem = config_.cert_pem.c_str();
     } else {
-        http_config.crt_bundle_attach = nullptr;
+        http_config.crt_bundle_attach = esp_crt_bundle_attach;
         http_config.skip_cert_common_name_check = true;
     }
 
@@ -996,11 +1043,11 @@ std::string OtaManager::BuildBaseUrl(const std::string& input) {
     }
 
     if (is_ip) {
-        // IP → thêm port mặc định
+        // IP → dùng HTTP + port mặc định (mạng nội bộ)
         return "http://" + input + ":8080";
     } else {
-        // Domain → không thêm port (reverse proxy sẽ xử lý)
-        return "http://" + input;
+        // Domain → dùng HTTPS (reverse proxy + SSL certificate)
+        return "https://" + input;
     }
 }
 
