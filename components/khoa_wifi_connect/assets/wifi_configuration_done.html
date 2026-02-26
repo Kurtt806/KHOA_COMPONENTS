@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Cấu hình WiFi thành công</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* VS Code Dark Theme Colors with Moss Green Accent */
+            --bg-color: #1e1e1e;
+            --text-primary: #cccccc;
+            --accent-color: #608b4e;
+            --card-bg: #252526;
+            --border-color: #454545;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .checkmark {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+        }
+
+        .checkmark__circle {
+            stroke: var(--accent-color);
+            stroke-width: 2;
+            stroke-miterlimit: 10;
+            fill: none;
+            animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+        }
+
+        .checkmark__check {
+            transform-origin: 50% 50%;
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+            stroke: var(--accent-color);
+            stroke-width: 3;
+        }
+
+        @keyframes stroke {
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        .message {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .message p {
+            margin: 8px 0;
+        }
+
+        .primary-text {
+            color: #fff;
+            font-weight: 600;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <svg class="checkmark" viewBox="0 0 52 52">
+            <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none" />
+            <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+        </svg>
+
+        <div class="message">
+            <p class="primary-text">Cấu hình thành công!</p>
+            <p style="color: #888; font-size: 14px; margin-top: 15px;">Thiết bị đang khởi động lại...</p>
+        </div>
+    </div>
+
+    <script>
+        window.addEventListener('load', function () {
+            // Send exit request after a short delay
+            setTimeout(function () {
+                fetch('/exit', {
+                    method: 'POST'
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('Exit config mode request sent');
+                        } else {
+                            console.error('Failed to send exit request');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+            }, 1000);
+        });
+    </script>
+</body>
+
+</html>

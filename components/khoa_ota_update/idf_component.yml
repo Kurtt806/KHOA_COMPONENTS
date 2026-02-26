@@ -1,0 +1,21 @@
+name: "khoa_ota_update"
+version: "1.0.0"
+description: "Component cập nhật firmware OTA đồng bộ cho ESP32 - hỗ trợ HTTPS, kiểm tra phiên bản, rollback, progress callback."
+license: "MIT"
+maintainers:
+  - "Khoa <your-email@example.com>"
+url: "https://your-repo-link.com"
+targets:
+  - esp32
+  - esp32s3
+  - esp32c3
+  - esp32c5
+  - esp32c6
+  - esp32p4
+dependencies:
+  idf: ">=5.0"
+tags:
+  - ota
+  - firmware-update
+  - http
+  - https

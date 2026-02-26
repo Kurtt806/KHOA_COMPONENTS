@@ -1,0 +1,20 @@
+# Cấu hình riêng cho ESP32 (Xtensa dual-core, 240MHz)
+# Chip gốc với đầy đủ tính năng: WiFi, BT Classic, BLE
+
+# Chọn target ESP32
+CONFIG_IDF_TARGET="esp32"
+
+# Cấu hình Partition Table
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions/partitions_esp32_4MB.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions/partitions_esp32_4MB.csv"
+
+# Cấu hình Flash - ESP32 thường dùng module 4MB
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHFREQ_40M=y
+
+# Cấu hình CPU - Dual core
+CONFIG_FREERTOS_UNICORE=n
+
+# Cấu hình PSRAM (nếu có module WROVER)
+# CONFIG_ESP32_SPIRAM_SUPPORT=y
+# CONFIG_SPIRAM_SPEED_80M=y

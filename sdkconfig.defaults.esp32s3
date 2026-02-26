@@ -1,0 +1,27 @@
+# Cấu hình riêng cho ESP32-S3 (Xtensa dual-core, 240MHz)
+# Chip mạnh mẽ với WiFi + BLE 5.0, hỗ trợ AI (vector instructions), USB OTG
+
+# Chọn target ESP32-S3
+CONFIG_IDF_TARGET="esp32s3"
+
+# Cấu hình Partition Table
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions/partitions_esp32s3_16MB.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions/partitions_esp32s3_16MB.csv"
+
+# Cấu hình Flash - S3 thường dùng module flash lớn
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+
+# Cấu hình CPU - Dual core & 240MHz
+CONFIG_FREERTOS_UNICORE=n
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ=240
+
+# Cấu hình PSRAM (S3 thường có module N16R8 = 16MB Flash + 8MB PSRAM)
+# CONFIG_SPIRAM=y
+# CONFIG_SPIRAM_MODE_OCT=y
+# CONFIG_SPIRAM_SPEED_80M=y
+
+# Cấu hình USB OTG
+# CONFIG_USB_OTG_SUPPORTED=y

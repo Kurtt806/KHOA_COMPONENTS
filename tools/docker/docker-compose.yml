@@ -1,0 +1,59 @@
+# ============================================================
+# Docker Compose - ESP32 OTA Server
+# Tương thích Portainer Stack Deploy
+# ============================================================
+#
+# Cách dùng:
+#   1. Portainer: Stacks → Add Stack → Upload docker-compose.yml
+#   2. CLI:       docker-compose up -d --build
+#
+# Cấu hình:
+#   - Đặt file firmware .bin vào thư mục ./firmware/
+#   - Chỉnh biến môi trường bên dưới theo nhu cầu
+# ============================================================
+
+services:
+  ota-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: esp32-ota-server
+    restart: unless-stopped
+
+    # ── Port mapping ──
+    ports:
+      - "8080:8080"
+
+    # ── Biến môi trường (chỉnh theo nhu cầu) ──
+    environment:
+      - OTA_PORT=8080
+      - OTA_VERSION=1.0.0          # Version firmware hiện tại
+      - OTA_TOKEN=                  # VIBO-KEY (để trống = không yêu cầu)
+      - OTA_FIRMWARE_DIR=/firmware
+      - OTA_DATA_DIR=/data
+      - TZ=Asia/Ho_Chi_Minh         # Timezone Việt Nam
+
+    # ── Volume mount ──
+    volumes:
+      # Thư mục chứa file firmware .bin (bắt buộc)
+      - ./firmware:/firmware:ro
+
+      # Thư mục lưu dữ liệu thiết bị (persist qua restart)
+      - ota_data:/data
+
+    # ── Portainer labels ──
+    labels:
+      - "com.portainer.stack=ota-server"
+      - "description=ESP32 OTA Firmware Server"
+
+    # ── Logging giới hạn để không đầy ổ đĩa ──
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Volume được quản lý bởi Docker (persist data)
+volumes:
+  ota_data:
+    name: esp32_ota_data

@@ -1,0 +1,18 @@
+name: "khoa_wifi_connect"
+version: "1.0.1"
+description: "Bộ công cụ quản lý kết nối WiFi với giao diện Web (Captive Portal) phong cách VS Code, hỗ trợ cấu hình nâng cao (Google Sheets, VIBO-KEY)."
+license: "MIT"
+maintainers:
+  - "Khoa <your-email@example.com>"
+url: "https://your-repo-link.com" # Thay bằng link repo của bạn nếu có
+targets:
+  - esp32
+  - esp32s3
+  - esp32c3
+dependencies:
+  idf: ">=5.0"
+tags:
+  - wifi
+  - captive-portal
+  - configuration
+  - http-server

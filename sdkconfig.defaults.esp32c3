@@ -1,0 +1,17 @@
+# Cấu hình riêng cho ESP32-C3 (RISC-V single-core, 160MHz)
+# Chip nhỏ gọn với WiFi + BLE 5.0
+
+# Chọn target ESP32-C3
+CONFIG_IDF_TARGET="esp32c3"
+
+# Cấu hình Partition Table
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions/partitions_esp32c3_4MB.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions/partitions_esp32c3_4MB.csv"
+
+# Cấu hình Flash - C3 thường dùng module 4MB
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+
+# Cấu hình USB Serial/JTAG (C3 có tích hợp USB-Serial)
+CONFIG_USJ_ENABLE_USB_SERIAL_JTAG=y

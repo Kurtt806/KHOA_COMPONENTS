@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OTA Server Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="icon">🔧</span> OTA Firmware Server</h1>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Live Connection</span>
+            </div>
+        </header>
+
+        <div class="grid cards-container">
+            <div class="card stat-card">
+                <div class="stat-label">Server</div>
+                <div class="stat-value"><code id="serverAddress">-</code></div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Current Version</div>
+                <div class="stat-value version" id="serverVersion">-</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Auto Checks</div>
+                <div class="stat-value count" id="checkCount">0</div>
+            </div>
+            <div class="card stat-card">
+                <div class="stat-label">Downloads</div>
+                <div class="stat-value count" id="downloadCount">0</div>
+            </div>
+        </div>
+
+        <div class="section-title">
+            <h2>📱 Quản lý Thiết bị & OTA</h2>
+            <span class="badge new-badge" id="pendingAlert" style="display: none;">Mới</span>
+        </div>
+        <div class="card">
+            <table class="data-table" id="pendingTable">
+                <thead>
+                    <tr>
+                        <th>MAC / IP</th>
+                        <th>Device Info</th>
+                        <th>Trạng thái & Tiến trình</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="4" class="empty-state">Chưa có thiết bị nào</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section-title">
+            <h2>📦 File Firmware (.bin)</h2>
+        </div>
+        <div class="card">
+            <table class="data-table" id="firmwareTable">
+                <thead>
+                    <tr>
+                        <th>Tên File</th>
+                        <th>Kích thước</th>
+                        <th>Cập nhật lúc</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="3" class="empty-state">Đang tải danh sách file...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+
+</html>
