@@ -97,7 +97,7 @@ async def handle_validate_token(request: Request):
         if pending_devices[received_mac].get("status") == "approved":
             current_status = "approved"
 
-    server_url = f"http://{get_local_ip()}:{config.port}"
+    server_url = config.get_public_url()
 
     # Trường hợp 1: Không có hash → thiết bị chưa cấu hình VIBO-KEY
     if not received_hash:
@@ -164,7 +164,7 @@ async def handle_token_status(mac: str = ""):
 
     response_data = {"status": device["status"]}
     if device["status"] == "approved" and config.firmware_path:
-        response_data["firmware_url"] = f"http://{get_local_ip()}:{config.port}/{os.path.basename(config.firmware_path)}"
+        response_data["firmware_url"] = f"{config.get_public_url()}/{os.path.basename(config.firmware_path)}"
     return JSONResponse(content=response_data)
 
 

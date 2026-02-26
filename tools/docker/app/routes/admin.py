@@ -161,8 +161,7 @@ async def set_version(request: Request):
 @router.get("/api/data")
 async def serve_api_data():
     """Trả về toàn bộ dữ liệu JSON cho Dashboard Web UI realtime"""
-    local_ip = get_local_ip()
-    port = config.port
+    public_url = config.get_public_url()
 
     bin_files = []
     if config.firmware_path and os.path.isfile(config.firmware_path):
@@ -171,11 +170,19 @@ async def serve_api_data():
             os.path.getmtime(config.firmware_path)
         ).strftime("%Y-%m-%d %H:%M:%S")
         rel_name = os.path.basename(config.firmware_path)
-        bin_files.append({"name": rel_name, "size": format_size(size), "time": mtime})
+        md5 = calc_md5(config.firmware_path)
+        bin_files.append({
+            "name": rel_name,
+            "size": format_size(size),
+            "size_bytes": size,
+            "time": mtime,
+            "version": config.ota_version or "N/A",
+            "md5": md5,
+        })
 
     data = {
         "server": {
-            "address": f"http://{local_ip}:{port}",
+            "address": public_url,
             "version": config.ota_version or "N/A",
             "version_checks": stats["version_check_count"],
             "downloads": stats["download_count"],

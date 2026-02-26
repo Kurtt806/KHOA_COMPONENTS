@@ -33,6 +33,8 @@ def _auto_configure_from_env():
     config.bind = os.environ.get("OTA_BIND", "0.0.0.0")
     config.ota_token = os.environ.get("OTA_TOKEN", "") or None
     config.ota_version = os.environ.get("OTA_VERSION", "0.0.0")
+    # URL public cho ESP32 (VD: http://ota.vibohub.com - không có port)
+    config.base_url = os.environ.get("OTA_BASE_URL", "") or None
 
     fw_env = os.environ.get("OTA_FIRMWARE")
     fw_dir = os.environ.get("OTA_FIRMWARE_DIR", "/firmware")

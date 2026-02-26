@@ -6,7 +6,7 @@ function renderFiles(files) {
 
   if (!files || files.length === 0) {
     fwTable.innerHTML =
-      '<tr><td colspan="3" class="empty-state">Không tìm thấy file firmware nào.</td></tr>';
+      '<tr><td colspan="5" class="empty-state">Chưa có file firmware. Hãy upload ở mục bên trên.</td></tr>';
     return;
   }
 
@@ -14,7 +14,9 @@ function renderFiles(files) {
     const row = document.createElement("tr");
     row.innerHTML = `
             <td><a href="/${f.name}" target="_blank">📄 ${f.name}</a></td>
+            <td><span class="badge approved" style="font-size: 0.85rem;">v${f.version || "?"}</span></td>
             <td class="file-size">${f.size}</td>
+            <td><code style="font-size: 0.75rem; color: #64748b;">${f.md5 || "-"}</code></td>
             <td class="file-date">${f.time}</td>
         `;
     fwTable.appendChild(row);

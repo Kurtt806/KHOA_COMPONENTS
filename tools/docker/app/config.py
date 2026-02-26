@@ -16,6 +16,16 @@ class AppConfig:
     ota_token: Optional[str] = None
     port: int = 8080
     bind: str = "0.0.0.0"
+    # URL public cho ESP32 truy cập (VD: http://ota.vibohub.com)
+    # Nếu dùng domain + reverse proxy thì KHÔNG thêm port
+    base_url: Optional[str] = None
+
+    def get_public_url(self) -> str:
+        """Trả về URL public để ESP32 truy cập firmware"""
+        if self.base_url:
+            return self.base_url.rstrip('/')
+        from app.utils import get_local_ip
+        return f"http://{get_local_ip()}:{self.port}"
 
 
 # Singleton config
