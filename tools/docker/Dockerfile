@@ -34,17 +34,17 @@ COPY static/ ./static/
 # Tạo thư mục cho firmware và data (sẽ mount volume)
 RUN mkdir -p /firmware /data
 
-# Expose port mặc định
-EXPOSE 8080
+# Expose port (giá trị thực tế phụ thuộc OTA_PORT)
+EXPOSE ${OTA_PORT}
 
-# Health check cho Portainer monitoring
+# Health check cho Portainer monitoring (shell form để expand $OTA_PORT)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${OTA_PORT}/api/data')" || exit 1
 
-# Chạy server bằng uvicorn
-CMD ["python", "-m", "uvicorn", "app.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8080", \
-     "--log-level", "warning", \
-     "--proxy-headers", \
-     "--forwarded-allow-ips", "*"]
+# Chạy server bằng uvicorn (shell form để dùng biến $OTA_PORT)
+CMD python -m uvicorn app.main:app \
+    --host 0.0.0.0 \
+    --port ${OTA_PORT} \
+    --log-level warning \
+    --proxy-headers \
+    --forwarded-allow-ips "*"
