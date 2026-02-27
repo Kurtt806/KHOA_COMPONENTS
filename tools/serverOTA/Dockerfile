@@ -8,7 +8,7 @@ FROM python:3.12-slim AS base
 # Metadata cho Portainer
 LABEL maintainer="khoa"
 LABEL description="ESP32 OTA Firmware Server with Web Dashboard"
-LABEL version="2.0.0"
+LABEL version="3.0.0"
 
 # Biến môi trường mặc định
 ENV PYTHONUNBUFFERED=1 \
@@ -17,8 +17,7 @@ ENV PYTHONUNBUFFERED=1 \
     OTA_BIND=0.0.0.0 \
     OTA_FIRMWARE_DIR=/firmware \
     OTA_DATA_DIR=/data \
-    OTA_VERSION=0.0.0 \
-    OTA_TOKEN=""
+    OTA_VERSION=0.0.0
 
 WORKDIR /app
 

@@ -30,6 +30,7 @@ router = APIRouter()
 # ============================================================
 
 @router.post("/")
+@router.post("/version.json")
 async def handle_check_version(request: Request):
     """ESP32 POST {mac, version, chip, cores, flash_kb, app_name} → server trả firmware info"""
     stats["version_check_count"] += 1
