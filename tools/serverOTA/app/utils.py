@@ -18,26 +18,34 @@ class Colors:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
+    WHITE = '\033[97m'
     BOLD = '\033[1m'
     END = '\033[0m'
 
 
 # Log có timestamp
 def log_info(msg):
+    """Mặc định log server -> Trắng"""
     ts = datetime.now().strftime("%H:%M:%S")
-    print(f"{Colors.CYAN}[{ts}]{Colors.END} {msg}")
+    print(f"[{ts}] {Colors.WHITE}{msg}{Colors.END}")
+
+def log_esp_info(msg):
+    """Log ESP -> Xanh Dương"""
+    ts = datetime.now().strftime("%H:%M:%S")
+    print(f"[{ts}] {Colors.BLUE}{msg}{Colors.END}")
 
 def log_success(msg):
+    """Log Admin/Thành công -> Xanh Lá"""
     ts = datetime.now().strftime("%H:%M:%S")
-    print(f"{Colors.GREEN}[{ts}] ✓ {msg}{Colors.END}")
+    print(f"[{ts}] {Colors.GREEN}✓ {msg}{Colors.END}")
 
 def log_warning(msg):
     ts = datetime.now().strftime("%H:%M:%S")
-    print(f"{Colors.YELLOW}[{ts}] ⚠ {msg}{Colors.END}")
+    print(f"[{ts}] {Colors.YELLOW}⚠ {msg}{Colors.END}")
 
 def log_error(msg):
     ts = datetime.now().strftime("%H:%M:%S")
-    print(f"{Colors.RED}[{ts}] ✗ {msg}{Colors.END}")
+    print(f"[{ts}] {Colors.RED}✗ {msg}{Colors.END}")
 
 
 # Tiện ích

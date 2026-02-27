@@ -19,7 +19,7 @@ from app.devices import (
 )
 from app.utils import (
     Colors, format_size,
-    log_info, log_success, log_warning, log_error,
+    log_info, log_esp_info, log_success, log_warning, log_error,
 )
 
 router = APIRouter()
@@ -76,7 +76,7 @@ async def handle_check_version(request: Request):
         version_clients[client_ip] = {"count": 1, "last_time": now}
 
     print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-    log_info(f"🔍 [#{stats['version_check_count']}] Check tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac} | v{device_version}")
+    log_esp_info(f"🔍 [#{stats['version_check_count']}] Check tu {Colors.BOLD}{client_ip}{Colors.END}{Colors.BLUE} | MAC: {mac} | v{device_version}")
 
     # Khởi tạo response (mặc định không có link firmware)
     firmware_url = ""
@@ -102,7 +102,7 @@ async def handle_check_version(request: Request):
     }
 
     url_str = firmware_url if firmware_url else "(none)"
-    log_info(f"   Response: v{device_version} -> v{version} | URL: {url_str}")
+    log_esp_info(f"   Response: v{device_version} -> v{version} | URL: {url_str}")
     print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
 
     return JSONResponse(content=response)
@@ -165,8 +165,8 @@ async def _stream_firmware(request: Request, filepath: str):
     dl_key = mac or client_ip
 
     print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-    log_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac or '?'}")
-    log_info(f"   File: {filename} | Size: {format_size(file_size)}")
+    log_esp_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END}{Colors.BLUE} | MAC: {mac or '?'}")
+    log_esp_info(f"   File: {filename} | Size: {format_size(file_size)}")
 
     active_downloads[dl_key] = {
         "percent": 0, "speed": "0 B/s", "downloaded": 0, "total": file_size,
