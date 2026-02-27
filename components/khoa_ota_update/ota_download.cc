@@ -18,10 +18,6 @@ esp_err_t OtaManager::PerformOta() {
     if (update_partition == nullptr) {
         NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong tim thay phan vung cap nhat!");
         ESP_LOGE(TAG, "Khong tim thay phan vung OTA tiep theo!");
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
         return ESP_ERR_NOT_FOUND;
     }
 
@@ -43,22 +39,14 @@ esp_err_t OtaManager::PerformOta() {
     esp_http_client_handle_t client = esp_http_client_init(&http_config);
     if (client == nullptr) {
         NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong the khoi tao HTTP client!");
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
         return ESP_FAIL;
     }
 
     err = esp_http_client_open(client, 0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Khong the ket noi server firmware: %s", esp_err_to_name(err));
-        NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong the ket noi server!");
         esp_http_client_cleanup(client);
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
+        NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong the ket noi server!");
         return err;
     }
 
@@ -69,13 +57,9 @@ esp_err_t OtaManager::PerformOta() {
 
     if (status_code != 200) {
         ESP_LOGE(TAG, "Server tra ve loi HTTP %d", status_code);
-        NotifyProgress(OtaState::Failed, 0, 0, 0, "Server tra ve loi HTTP!");
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
+        NotifyProgress(OtaState::Failed, 0, 0, 0, "Server tra ve loi HTTP!");
         return ESP_FAIL;
     }
 
@@ -84,13 +68,9 @@ esp_err_t OtaManager::PerformOta() {
     err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &ota_handle);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_ota_begin that bai: %s", esp_err_to_name(err));
-        NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong the bat dau ghi OTA!");
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
+        NotifyProgress(OtaState::Failed, 0, 0, 0, "Khong the bat dau ghi OTA!");
         return err;
     }
 
@@ -105,27 +85,26 @@ esp_err_t OtaManager::PerformOta() {
         esp_ota_abort(ota_handle);
         esp_http_client_close(client);
         esp_http_client_cleanup(client);
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
+        NotifyProgress(OtaState::Failed, 0, 0, 0, "Loi cap phat bo nho!");
         return ESP_ERR_NO_MEM;
     }
 
     while (true) {
         // Kiểm tra yêu cầu hủy
+        bool is_aborted = false;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (abort_requested_) {
-                ESP_LOGW(TAG, "Cap nhat OTA bi huy boi nguoi dung!");
-                free(buffer);
-                esp_ota_abort(ota_handle);
-                esp_http_client_close(client);
-                esp_http_client_cleanup(client);
-                state_ = OtaState::Idle;
-                NotifyProgress(OtaState::Idle, 0, 0, 0, "Da huy cap nhat!");
-                return ESP_ERR_OTA_ROLLBACK_FAILED;
-            }
+            is_aborted = abort_requested_;
+        }
+
+        if (is_aborted) {
+            ESP_LOGW(TAG, "Cap nhat OTA bi huy boi nguoi dung!");
+            free(buffer);
+            esp_ota_abort(ota_handle);
+            esp_http_client_close(client);
+            esp_http_client_cleanup(client);
+            NotifyProgress(OtaState::Idle, 0, 0, 0, "Da huy cap nhat!");
+            return ESP_ERR_OTA_ROLLBACK_FAILED;
         }
 
         int read_len = esp_http_client_read(client, buffer, config_.buffer_size);
@@ -136,10 +115,6 @@ esp_err_t OtaManager::PerformOta() {
             esp_ota_abort(ota_handle);
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                state_ = OtaState::Failed;
-            }
             NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Loi doc du lieu!");
             return ESP_FAIL;
         }
@@ -154,10 +129,6 @@ esp_err_t OtaManager::PerformOta() {
             esp_ota_abort(ota_handle);
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                state_ = OtaState::Failed;
-            }
             NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Ket noi bi ngat!");
             return ESP_FAIL;
         }
@@ -170,10 +141,6 @@ esp_err_t OtaManager::PerformOta() {
             esp_ota_abort(ota_handle);
             esp_http_client_close(client);
             esp_http_client_cleanup(client);
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                state_ = OtaState::Failed;
-            }
             NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Loi ghi firmware!");
             return err;
         }
@@ -181,14 +148,18 @@ esp_err_t OtaManager::PerformOta() {
         downloaded += read_len;
 
         // Cập nhật tiến trình (chỉ khi phần trăm thay đổi để tránh spam)
-        int percent = 0;
         if (total_bytes > 0) {
-            percent = (int)((downloaded * 100) / total_bytes);
-        }
-
-        if (percent != last_percent) {
-            last_percent = percent;
-            NotifyProgress(OtaState::Downloading, percent, downloaded, total_bytes, "Dang tai firmware...");
+            int percent = (int)((downloaded * 100) / total_bytes);
+            if (percent != last_percent) {
+                last_percent = percent;
+                NotifyProgress(OtaState::Downloading, percent, downloaded, total_bytes, "Dang tai firmware...");
+            }
+        } else {
+            // Trường hợp server không trả Content-Length (Chunked Transfer), log update mỗi 50KB
+            if ((int)downloaded - last_percent >= 51200) {
+                last_percent = (int)downloaded;
+                NotifyProgress(OtaState::Downloading, 0, downloaded, 0, "Dang tai firmware...");
+            }
         }
     }
 
@@ -208,10 +179,6 @@ esp_err_t OtaManager::PerformOta() {
         } else {
             ESP_LOGE(TAG, "esp_ota_end that bai: %s", esp_err_to_name(err));
         }
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
         NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Firmware khong hop le!");
         return err;
     }
@@ -220,17 +187,8 @@ esp_err_t OtaManager::PerformOta() {
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_ota_set_boot_partition that bai: %s", esp_err_to_name(err));
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            state_ = OtaState::Failed;
-        }
         NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Loi dat phan vung boot!");
         return err;
-    }
-
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        state_ = OtaState::Ready;
     }
 
     NotifyProgress(OtaState::Ready, 100, downloaded, total_bytes, 

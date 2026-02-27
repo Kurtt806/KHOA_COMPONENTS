@@ -1,39 +1,42 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OTA Server Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v=4">
 </head>
 
 <body>
     <div class="container">
         <header>
-            <h1><span class="icon">🔧</span> OTA Firmware Server</h1>
+            <h1><span class="icon">⚡</span> OTA Dashboard</h1>
             <div class="status-indicator">
                 <div class="status-dot"></div>
-                <span>Live Connection</span>
+                <span>Live</span>
             </div>
         </header>
 
         <div class="grid cards-container">
             <div class="card stat-card">
+                <div class="stat-icon">🌐</div>
                 <div class="stat-label">Server</div>
                 <div class="stat-value"><code id="serverAddress">-</code></div>
             </div>
             <div class="card stat-card">
-                <div class="stat-label">Current Version</div>
+                <div class="stat-icon">📦</div>
+                <div class="stat-label">Firmware Version</div>
                 <div class="stat-value version" id="serverVersion">-</div>
-                <!-- Nút chỉnh sửa version bằng tay đã được xóa -->
             </div>
             <div class="card stat-card">
-                <div class="stat-label">Auto Checks</div>
+                <div class="stat-icon">🔍</div>
+                <div class="stat-label">Checks</div>
                 <div class="stat-value count" id="checkCount">0</div>
             </div>
             <div class="card stat-card">
+                <div class="stat-icon">📥</div>
                 <div class="stat-label">Downloads</div>
                 <div class="stat-value count" id="downloadCount">0</div>
             </div>
@@ -49,10 +52,9 @@
                 <div class="upload-text">Kéo thả file <strong>.bin</strong> vào đây hoặc</div>
                 <label class="btn btn-upload" for="firmwareFileInput">Chọn file</label>
                 <input type="file" id="firmwareFileInput" accept=".bin" style="display: none;">
-                <div class="upload-hint">Chỉ chấp nhận file .bin (firmware ESP32)</div>
+                <div class="upload-hint">Chỉ chấp nhận firmware .bin cho ESP32</div>
             </div>
 
-            <!-- Upload form (hiện sau khi chọn file) -->
             <div class="upload-form" id="uploadForm" style="display: none;">
                 <div class="upload-file-info">
                     <span class="upload-filename" id="uploadFilename">-</span>
@@ -64,11 +66,9 @@
                         class="input-field">
                 </div>
                 <div class="upload-actions">
-                    <button class="btn btn-approve" id="btnUpload" onclick="uploadFirmware()">⬆️ Upload lên
-                        Server</button>
+                    <button class="btn btn-approve" id="btnUpload" onclick="uploadFirmware()">⬆️ Upload</button>
                     <button class="btn btn-deny" onclick="cancelUpload()">Hủy</button>
                 </div>
-                <!-- Upload progress -->
                 <div class="upload-progress" id="uploadProgress" style="display: none;">
                     <div class="progress-container" style="max-width: 100%;">
                         <div class="progress-bar" id="uploadProgressBar" style="width: 0%"></div>
@@ -77,12 +77,12 @@
                 </div>
             </div>
 
-            <!-- Upload result -->
             <div class="upload-result" id="uploadResult" style="display: none;"></div>
         </div>
 
+        <!-- Thiết bị -->
         <div class="section-title">
-            <h2>📱 Quản lý Thiết bị & OTA</h2>
+            <h2>📱 Thiết bị ESP32</h2>
             <span class="badge new-badge" id="pendingAlert" style="display: none;">Mới</span>
         </div>
         <div class="card">
@@ -90,21 +90,22 @@
                 <thead>
                     <tr>
                         <th>MAC / IP</th>
-                        <th>Device Info</th>
-                        <th>Trạng thái & Tiến trình</th>
+                        <th>Phần cứng</th>
+                        <th>Trạng thái</th>
                         <th>Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="4" class="empty-state">Chưa có thiết bị nào</td>
+                        <td colspan="4" class="empty-state">Chưa có thiết bị nào kết nối</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- Firmware Files -->
         <div class="section-title">
-            <h2>📦 File Firmware (.bin)</h2>
+            <h2>💾 Firmware Files</h2>
         </div>
         <div class="card">
             <table class="data-table" id="firmwareTable">
@@ -114,19 +115,19 @@
                         <th>Version</th>
                         <th>Kích thước</th>
                         <th>MD5</th>
-                        <th>Cập nhật lúc</th>
+                        <th>Cập nhật</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td colspan="5" class="empty-state">Chưa có file firmware. Hãy upload ở mục bên trên.</td>
+                        <td colspan="5" class="empty-state">Chưa có firmware. Upload ở mục bên trên.</td>
                     </tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <script src="/static/app.js?v=3"></script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 
 </html>

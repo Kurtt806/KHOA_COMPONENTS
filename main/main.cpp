@@ -52,8 +52,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(TAG, "Da ket noi WiFi thanh cong!");
                 // Gọi OTA ngay khi có IP
                 OtaManager::GetInstance().CheckOnBoot(
-                    WifiManager::GetInstance().GetOtaUrl(), 
-                    WifiManager::GetInstance().GetViboKey()
+                    WifiManager::GetInstance().GetOtaUrl()
                 );
                 break;
             case WifiEvent::Disconnected:
@@ -105,10 +104,10 @@ extern "C" void app_main(void)
     }
 
     // --- Thông số cấu hình nâng cao ---
-    ESP_LOGI(TAG, "VIBO-KEY: %s", manager.GetViboKey().c_str());
-    ESP_LOGI(TAG, "Google Sheet 1: %s", manager.GetGoogleSheetUrl1().c_str());
-    ESP_LOGI(TAG, "Google Sheet 2: %s", manager.GetGoogleSheetUrl2().c_str());
-    ESP_LOGI(TAG, "OTA URL: %s", manager.GetOtaUrl().c_str());
+    ESP_LOGI(TAG, "VIBOKEY: %s", manager.GetViboKey().c_str());
+    ESP_LOGI(TAG, "GSheet1: %s", manager.GetGoogleSheetUrl1().c_str());
+    ESP_LOGI(TAG, "GSheet2: %s", manager.GetGoogleSheetUrl2().c_str());
+    ESP_LOGI(TAG, "OTA_URL: %s", manager.GetOtaUrl().c_str());
 
 }
 

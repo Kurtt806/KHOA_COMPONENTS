@@ -30,6 +30,6 @@ dependencies:
 direct_dependencies:
 - espressif/button
 - idf
-manifest_hash: 99069d521e7591a8144863f4e59d328085ecb074373e39bf168272b4f02a3689
+manifest_hash: 5eca49811c5c1abe52864cf992c225da773b42fd6299afc8e70fec642e29767d
 target: esp32s3
 version: 2.0.0

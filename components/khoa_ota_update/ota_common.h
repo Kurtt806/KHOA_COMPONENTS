@@ -1,6 +1,5 @@
 /*
- * Header nội bộ - Các include và helper dùng chung cho OTA Manager
- * File này KHÔNG public ra ngoài component
+ * Header nội bộ - Include và helper dùng chung cho OTA Manager
  */
 
 #ifndef _OTA_COMMON_H_
@@ -22,50 +21,39 @@
 #include "cJSON.h"
 #include "esp_mac.h"
 
-// Khai báo hàm C gắn bundle chứng chỉ SSL mặc định của ESP-IDF
 extern "C" esp_err_t esp_crt_bundle_attach(void *conf);
 
-// Tag dùng chung cho tất cả log OTA
-static const char *TAG = "OTA_MGR";
+static const char *TAG = "OTA";
 
-/// Struct buffer nhận HTTP response body qua event handler
+/// Buffer nhận HTTP response body
 struct HttpResponseCtx {
     char* buf;
     int len;
     int max;
 };
 
-/// Event handler chung cho HTTP client - đọc response body vào buffer
-static esp_err_t http_event_handler(esp_http_client_event_t* evt) {
+/// Event handler HTTP — đọc response vào buffer
+static inline esp_err_t http_event_handler(esp_http_client_event_t* evt) {
     auto* c = (HttpResponseCtx*)evt->user_data;
     if (evt->event_id == HTTP_EVENT_ON_DATA && c && c->buf) {
-        int copy = evt->data_len;
-        if (c->len + copy > c->max) copy = c->max - c->len;
-        if (copy > 0) {
-            memcpy(c->buf + c->len, evt->data, copy);
-            c->len += copy;
-        }
+        int n = evt->data_len;
+        if (c->len + n > c->max) n = c->max - c->len;
+        if (n > 0) { memcpy(c->buf + c->len, evt->data, n); c->len += n; }
     }
     return ESP_OK;
 }
 
-/// Cấu hình SSL cho esp_http_client_config_t
-static void configure_ssl(esp_http_client_config_t& cfg, const std::string& cert_pem) {
+/// Cấu hình SSL cho HTTP client
+static inline void configure_ssl(esp_http_client_config_t& cfg, const std::string& cert_pem) {
     cfg.buffer_size = 2048;
-    // Bật keep-alive
     cfg.keep_alive_enable = true;
-    
-    if (!cert_pem.empty()) {
-        cfg.cert_pem = cert_pem.c_str();
-    } else {
-        cfg.crt_bundle_attach = esp_crt_bundle_attach;
-    }
-    // Gửi SNI (Server Name Indication) mặc định, để certificate validator tự check (Tránh các cloud services dập liên kết)
+    if (!cert_pem.empty()) cfg.cert_pem = cert_pem.c_str();
+    else cfg.crt_bundle_attach = esp_crt_bundle_attach;
     cfg.skip_cert_common_name_check = false;
 }
 
-/// Lấy MAC address WiFi Station dạng chuỗi hex "aabbccddeeff"
-static std::string GetMacString() {
+/// Lấy MAC WiFi Station dạng "aabbccddeeff"
+static inline std::string GetMacString() {
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
     char buf[13];
@@ -74,18 +62,14 @@ static std::string GetMacString() {
     return std::string(buf);
 }
 
-/// So sánh 2 chuỗi version theo semantic versioning (VD: "1.2.3" vs "1.3.0")
-/// Trả về: >0 nếu a > b, 0 nếu a == b, <0 nếu a < b
+/// So sánh semantic version ("1.2.3" vs "1.3.0")
 static inline int CompareVersion(const std::string& a, const std::string& b) {
-    int a_major = 0, a_minor = 0, a_patch = 0;
-    int b_major = 0, b_minor = 0, b_patch = 0;
-
-    sscanf(a.c_str(), "%d.%d.%d", &a_major, &a_minor, &a_patch);
-    sscanf(b.c_str(), "%d.%d.%d", &b_major, &b_minor, &b_patch);
-
-    if (a_major != b_major) return a_major - b_major;
-    if (a_minor != b_minor) return a_minor - b_minor;
-    return a_patch - b_patch;
+    int a1=0,a2=0,a3=0, b1=0,b2=0,b3=0;
+    sscanf(a.c_str(), "%d.%d.%d", &a1, &a2, &a3);
+    sscanf(b.c_str(), "%d.%d.%d", &b1, &b2, &b3);
+    if (a1 != b1) return a1 - b1;
+    if (a2 != b2) return a2 - b2;
+    return a3 - b3;
 }
 
 #endif // _OTA_COMMON_H_
