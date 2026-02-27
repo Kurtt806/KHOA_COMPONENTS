@@ -85,6 +85,7 @@ async def handle_check_version(request: Request):
     response = {
         "version": version,  # Backward compat: firmware cũ đọc root["version"]
         "firmware": {
+            "version": version,
             "url": firmware_url,
             "force": 0,
         }
