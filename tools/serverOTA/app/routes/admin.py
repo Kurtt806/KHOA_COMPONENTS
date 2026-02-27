@@ -14,7 +14,7 @@ from app.devices import (
     save_devices, async_save_devices
 )
 from app.utils import (
-    format_size, calc_md5,
+    Colors, format_size, calc_md5,
     log_info, log_success, log_error,
 )
 
