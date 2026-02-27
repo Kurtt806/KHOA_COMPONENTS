@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from app.config import config
 from app.devices import (
     pending_devices, version_clients, active_downloads, stats,
-    save_devices,
+    save_devices, async_save_devices
 )
 from app.utils import (
     Colors, format_size,
@@ -63,10 +63,10 @@ async def handle_check_version(request: Request):
             "app_name": data.get("app_name", ""),
             "app_version": device_version,
             "timestamp": now,
-            "status": pending_devices.get(mac, {}).get("status", "approved"),
+            "status": pending_devices.get(mac, {}).get("status", "pending"),
         }
         pending_devices[mac] = dev_info
-        save_devices()
+        await async_save_devices()
 
     # Ghi nhận version check
     if client_ip in version_clients:
@@ -77,9 +77,15 @@ async def handle_check_version(request: Request):
 
     log_info(f"🔍 [#{stats['version_check_count']}] Check tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac} | v{device_version}")
 
-    # Tạo response JSON
+    # Khởi tạo response (mặc định không có link firmware)
     firmware_url = ""
-    if config.firmware_path and os.path.isfile(config.firmware_path):
+    
+    # Chỉ trả về link firmware nếu thiết bị đã được admin duyệt (approved)
+    is_approved = False
+    if mac and mac in pending_devices:
+        is_approved = (pending_devices[mac].get("status") == "approved")
+
+    if is_approved and config.firmware_path and os.path.isfile(config.firmware_path):
         firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
 
     response = {
@@ -141,6 +147,11 @@ async def _stream_firmware(request: Request, filepath: str):
             if d.get("ip") == client_ip:
                 mac = m
                 break
+
+    # Kiểm tra quyền truy cập: Chỉ thiết bị "approved" mới được tải
+    if not mac or mac not in pending_devices or pending_devices[mac].get("status") != "approved":
+        log_warning(f"⛔ Tu choi download tu {client_ip} | MAC: {mac} (Chua duoc duyet)")
+        raise HTTPException(status_code=403, detail="Thiet bi chua duoc duyet (Not Approved)")
 
     # Key tracking bằng MAC (unique), fallback IP
     dl_key = mac or client_ip

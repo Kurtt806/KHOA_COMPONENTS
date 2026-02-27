@@ -4,6 +4,8 @@ Devices module - Quản lý danh sách thiết bị OTA (persist vào file JSON)
 
 import os
 import json
+import asyncio
+import aiofiles
 from app.config import DEVICES_FILE
 from app.utils import log_info, log_error
 
@@ -19,13 +21,24 @@ stats = {
 
 
 def save_devices():
-    """Lưu thiết bị vào JSON"""
+    """Lưu thiết bị vào JSON (Đồng bộ - dùng khi khởi tạo chặn thread)"""
     try:
         os.makedirs(os.path.dirname(DEVICES_FILE), exist_ok=True)
         with open(DEVICES_FILE, 'w', encoding='utf-8') as f:
             json.dump(pending_devices, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        log_error(f"Khong the luu devices: {e}")
+        log_error(f"Khong the luu devices (sync): {e}")
+
+async def async_save_devices():
+    """Lưu thiết bị vào JSON (Bất đồng bộ - dùng trong luồng API)"""
+    try:
+        os.makedirs(os.path.dirname(DEVICES_FILE), exist_ok=True)
+        # Deep copy to avoid dict changed size during iteration
+        data_to_save = pending_devices.copy()
+        async with aiofiles.open(DEVICES_FILE, 'w', encoding='utf-8') as f:
+            await f.write(json.dumps(data_to_save, ensure_ascii=False, indent=2))
+    except Exception as e:
+        log_error(f"Khong the luu devices (async): {e}")
 
 
 def load_devices():

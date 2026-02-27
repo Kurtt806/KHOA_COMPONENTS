@@ -107,13 +107,15 @@ function renderDevices(devices, versionClients, activeDownloads) {
 
     // Badge
     let badge = "";
-    if (dl) badge = '<span class="badge downloading">🔄 Đang OTA</span>';
+    if (dl)
+      badge = '<span class="badge downloading">🔄 Đang tải Firmware</span>';
     else if (dev.ota_status === "approved")
-      badge = '<span class="badge approved">✅ Hoạt động</span>';
+      badge = '<span class="badge approved">✅ Đã cấp phép</span>';
     else if (dev.ota_status === "denied")
-      badge = '<span class="badge denied">❌ Từ chối</span>';
+      badge = '<span class="badge denied">🛑 Đã Chặn</span>';
     else if (dev.ota_status === "pending")
-      badge = '<span class="badge pending">⏳ Chờ duyệt</span>';
+      badge =
+        '<span class="badge pending" style="border: 1px solid var(--orange); box-shadow: 0 0 8px var(--orange-bg);">⚠️ Chờ cấp phép</span>';
     else
       badge =
         '<span class="badge" style="background:#334155;color:#94a3b8;">Mới</span>';
@@ -122,8 +124,12 @@ function renderDevices(devices, versionClients, activeDownloads) {
     let btns = "-";
     if (dev.ota_status === "pending" && !dl) {
       btns = `
-        <button class="btn btn-approve" onclick="handleAction('${dev.mac}','approve')">Duyệt</button>
-        <button class="btn btn-deny" onclick="handleAction('${dev.mac}','deny')">Từ chối</button>`;
+        <button class="btn btn-approve" onclick="handleAction('${dev.mac}','approve')" style="margin-right: 4px;">✅ Cấp phép</button>
+        <button class="btn btn-deny" onclick="handleAction('${dev.mac}','deny')">🛑 Từ chối</button>`;
+    } else if (dev.ota_status === "approved" && !dl) {
+      btns = `<button class="btn btn-deny" onclick="handleAction('${dev.mac}','deny')">Chặn</button>`;
+    } else if (dev.ota_status === "denied" && !dl) {
+      btns = `<button class="btn btn-approve" onclick="handleAction('${dev.mac}','approve')">Mở chặn</button>`;
     }
 
     // Device info

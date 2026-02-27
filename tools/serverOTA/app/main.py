@@ -76,7 +76,7 @@ async def startup_event():
 
     print()
     print(f"{Colors.BOLD}{Colors.BLUE}╔══════════════════════════════════════════════╗{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.BLUE}║   ESP32 OTA Server v3.0 (MAC-based auth)    ║{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.BLUE}║   ESP32 OTA Server v3.0 (MAC-based auth)     ║{Colors.END}")
     print(f"{Colors.BOLD}{Colors.BLUE}╚══════════════════════════════════════════════╝{Colors.END}")
     print()
     log_info(f"Server:  {Colors.BOLD}http://{local_ip}:{config.port}{Colors.END}")

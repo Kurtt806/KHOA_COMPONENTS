@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.config import config
 from app.devices import (
     pending_devices, version_clients, active_downloads, stats,
-    save_devices,
+    save_devices, async_save_devices
 )
 from app.utils import (
     format_size, calc_md5,
@@ -47,7 +47,7 @@ async def _handle_action(request: Request, action: str):
     else:
         log_error(f"TU CHOI thiet bi MAC={mac}")
 
-    save_devices()
+    await async_save_devices()
     return JSONResponse(content={"ok": True, "status": action})
 
 
