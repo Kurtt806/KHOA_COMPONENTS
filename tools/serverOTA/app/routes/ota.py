@@ -133,7 +133,15 @@ async def _stream_firmware(request: Request, filepath: str):
     filename = os.path.basename(filepath)
     client_ip = request.client.host
     mac = request.headers.get("Device-Id", "") or request.headers.get("x-device-mac", "")
-    # Key tracking bằng MAC (unique), fallback IP nếu không có MAC
+
+    # Nếu không có MAC trong header (firmware cũ), lookup từ pending_devices bằng IP
+    if not mac:
+        for m, d in pending_devices.items():
+            if d.get("ip") == client_ip:
+                mac = m
+                break
+
+    # Key tracking bằng MAC (unique), fallback IP
     dl_key = mac or client_ip
 
     print()
