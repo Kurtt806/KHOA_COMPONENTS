@@ -146,6 +146,43 @@ function renderDevices(devices, versionClients, activeDownloads) {
     : "none";
 }
 
+function renderActiveDownloads(activeDownloads) {
+  const section = document.getElementById("activeOtaSection");
+  const list = document.getElementById("activeOtaList");
+
+  if (!activeDownloads || Object.keys(activeDownloads).length === 0) {
+    section.style.display = "none";
+    list.innerHTML = "";
+    return;
+  }
+
+  section.style.display = "block";
+  list.innerHTML = "";
+
+  Object.entries(activeDownloads).forEach(([key, dl]) => {
+    const card = document.createElement("div");
+    card.className = "card ota-progress-card";
+    const downloaded = dl.downloaded ? formatBytes(dl.downloaded) : "0 B";
+    const total = dl.total ? formatBytes(dl.total) : "?";
+    card.innerHTML = `
+      <div class="ota-progress-header">
+        <div>
+          <span class="ota-progress-label">📥 OTA Update</span>
+          <span class="ota-progress-key">${dl.mac || dl.ip || key}</span>
+        </div>
+        <span class="ota-progress-percent">${dl.percent}%</span>
+      </div>
+      <div class="progress-container ota-progress-bar-large">
+        <div class="progress-bar" style="width:${dl.percent}%"></div>
+      </div>
+      <div class="ota-progress-footer">
+        <span>${downloaded} / ${total}</span>
+        <span>⚡ ${dl.speed || "0 B/s"}</span>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
 function fetchApiData() {
   fetch("/api/data")
     .then((r) => r.json())
@@ -157,6 +194,7 @@ function fetchApiData() {
       document.getElementById("downloadCount").innerText =
         data.server.downloads;
       renderFiles(data.firmware_files);
+      renderActiveDownloads(data.active_downloads);
       renderDevices(data.devices, data.version_clients, data.active_downloads);
     })
     .catch((err) => console.error("Error:", err));
