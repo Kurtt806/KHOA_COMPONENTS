@@ -31,41 +31,42 @@ router = APIRouter()
 
 @router.post("/")
 @router.post("/version.json")
+@router.get("/version.json")
 async def handle_check_version(request: Request):
-    """ESP32 POST {mac, version, chip, cores, flash_kb, app_name} → server trả firmware info"""
+    """ESP32 gửi thông tin thiết bị → server trả firmware info (hỗ trợ cả GET và POST)"""
     stats["version_check_count"] += 1
     client_ip = request.client.host
-    mac = request.headers.get("Device-Id", "")
+    mac = request.headers.get("Device-Id", "") or request.headers.get("x-device-mac", "")
 
+    # Parse JSON body (POST) hoặc dùng empty dict (GET)
+    data = {}
     try:
         data = await request.json()
     except Exception:
-        return JSONResponse(content={"error": "Invalid JSON"}, status_code=400)
+        pass  # GET request không có body → bỏ qua
 
-    # Lấy thông tin từ body
     mac = mac or data.get("mac", "")
-    device_version = data.get("version", "")
-
-    if not mac:
-        return JSONResponse(content={"error": "Missing mac/Device-Id"}, status_code=400)
+    device_version = data.get("version", "") or request.headers.get("x-device-version", "") or request.query_params.get("v", "")
+    mac = mac or request.query_params.get("mac", "")
 
     now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     server_url = config.get_public_url()
     version = config.ota_version or "0.0.0"
 
-    # Cập nhật thông tin thiết bị
-    dev_info = {
-        "ip": client_ip,
-        "chip": data.get("chip", ""),
-        "cores": data.get("cores", 0),
-        "flash_kb": data.get("flash_kb", 0),
-        "app_name": data.get("app_name", ""),
-        "app_version": device_version,
-        "timestamp": now,
-        "status": pending_devices.get(mac, {}).get("status", "approved"),
-    }
-    pending_devices[mac] = dev_info
-    save_devices()
+    # Cập nhật thông tin thiết bị (chỉ khi có MAC)
+    if mac:
+        dev_info = {
+            "ip": client_ip,
+            "chip": data.get("chip", ""),
+            "cores": data.get("cores", 0),
+            "flash_kb": data.get("flash_kb", 0),
+            "app_name": data.get("app_name", ""),
+            "app_version": device_version,
+            "timestamp": now,
+            "status": pending_devices.get(mac, {}).get("status", "approved"),
+        }
+        pending_devices[mac] = dev_info
+        save_devices()
 
     # Ghi nhận version check
     if client_ip in version_clients:
