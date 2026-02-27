@@ -83,6 +83,7 @@ async def handle_check_version(request: Request):
         firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
 
     response = {
+        "version": version,  # Backward compat: firmware cũ đọc root["version"]
         "firmware": {
             "version": version,
             "url": firmware_url,
