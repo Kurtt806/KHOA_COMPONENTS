@@ -85,7 +85,10 @@ async def handle_check_version(request: Request):
     if mac and mac in pending_devices:
         is_approved = (pending_devices[mac].get("status") == "approved")
 
-    if is_approved and config.firmware_path and os.path.isfile(config.firmware_path):
+    # Kiểm tra version: chỉ trả firmware url nếu version thiết bị khác với server
+    needs_update = (device_version != version)
+
+    if is_approved and needs_update and config.firmware_path and os.path.isfile(config.firmware_path):
         firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
 
     response = {
