@@ -74,34 +74,28 @@ async def startup_event():
     load_devices()
     local_ip = get_local_ip()
 
-    print()
-    print(f"{Colors.BOLD}{Colors.BLUE}╔══════════════════════════════════════════════╗{Colors.END}")
+    print(f"\n{Colors.BOLD}{Colors.BLUE}╔══════════════════════════════════════════════╗{Colors.END}")
     print(f"{Colors.BOLD}{Colors.BLUE}║   ESP32 OTA Server v3.0 (MAC-based auth)     ║{Colors.END}")
     print(f"{Colors.BOLD}{Colors.BLUE}╚══════════════════════════════════════════════╝{Colors.END}")
-    print()
     log_info(f"Server:  {Colors.BOLD}http://{local_ip}:{config.port}{Colors.END}")
     log_info(f"Version: {Colors.BOLD}{config.ota_version}{Colors.END}")
 
     if config.firmware_path and os.path.isfile(config.firmware_path):
         fw = config.firmware_path
         fw_size = os.path.getsize(fw)
-        print()
         log_info(f"Firmware: {Colors.BOLD}{os.path.basename(fw)}{Colors.END} ({format_size(fw_size)})")
         log_info(f"MD5:      {calc_md5(fw)}")
     else:
         log_warning("Chua co firmware. Mount volume /firmware hoac upload qua Web UI.")
 
-    print()
     print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
     log_info(f"📋 OTA Flow (2 buoc):")
     log_info(f"   B1: POST /            → ESP gui info, nhan version")
     log_info(f"   B2: GET /firmware.bin  → Download firmware")
     log_info(f"   🔑 Bao mat: MAC (Device-Id header)")
     print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-    print()
     log_info(f"Web UI:  {Colors.BOLD}http://{local_ip}:{config.port}/dashboard{Colors.END}")
     log_info(f"API:     {Colors.BOLD}http://{local_ip}:{config.port}/docs{Colors.END}")
-    print()
 
 
 if __name__ == "__main__":

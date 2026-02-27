@@ -75,6 +75,7 @@ async def handle_check_version(request: Request):
     else:
         version_clients[client_ip] = {"count": 1, "last_time": now}
 
+    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
     log_info(f"🔍 [#{stats['version_check_count']}] Check tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac} | v{device_version}")
 
     # Khởi tạo response (mặc định không có link firmware)
@@ -100,7 +101,10 @@ async def handle_check_version(request: Request):
         }
     }
 
-    log_info(f"   Response: v{version} | URL: {firmware_url or '(none)'}")
+    url_str = firmware_url if firmware_url else "(none)"
+    log_info(f"   Response: v{device_version} -> v{version} | URL: {url_str}")
+    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
+
     return JSONResponse(content=response)
 
 
@@ -153,17 +157,16 @@ async def _stream_firmware(request: Request, filepath: str):
 
     # Kiểm tra quyền truy cập: Chỉ thiết bị "approved" mới được tải
     if not mac or mac not in pending_devices or pending_devices[mac].get("status") != "approved":
+        print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
         log_warning(f"⛔ Tu choi download tu {client_ip} | MAC: {mac} (Chua duoc duyet)")
         raise HTTPException(status_code=403, detail="Thiet bi chua duoc duyet (Not Approved)")
 
     # Key tracking bằng MAC (unique), fallback IP
     dl_key = mac or client_ip
 
-    print()
-    log_info(f"{'=' * 50}")
+    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
     log_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac or '?'}")
     log_info(f"   File: {filename} | Size: {format_size(file_size)}")
-    log_info(f"{'=' * 50}")
 
     active_downloads[dl_key] = {
         "percent": 0, "speed": "0 B/s", "downloaded": 0, "total": file_size,
@@ -175,6 +178,7 @@ async def _stream_firmware(request: Request, filepath: str):
         sent = 0
         start_time = time.time()
         last_update_time = start_time
+        last_logged_percent = -1
 
         try:
             with open(filepath, 'rb') as f:
@@ -185,6 +189,11 @@ async def _stream_firmware(request: Request, filepath: str):
                     yield chunk
                     sent += len(chunk)
                     percent = int((sent * 100) / file_size)
+
+                    # In phần trăm tiến độ ra console mỗi khi nhảy được thêm 10%
+                    if percent > 0 and percent % 10 == 0 and percent != last_logged_percent:
+                        print(f"   ⏳ Dang tai... {percent}%")
+                        last_logged_percent = percent
 
                     cur_time = time.time()
                     if cur_time - last_update_time > 0.25:
@@ -197,20 +206,15 @@ async def _stream_firmware(request: Request, filepath: str):
                             "total": file_size,
                             "ip": client_ip, "mac": mac,
                         }
-                        
-                        # In tiến độ thực ra console (cập nhật trên cùng một dòng)
-                        print(f"\r   ⏳ Đang tải... {percent}% ({format_size(sent)}/{format_size(file_size)}) - Tốc độ: {format_size(int(speed))}/s", end="", flush=True)
 
             elapsed = time.time() - start_time
             speed = file_size / elapsed if elapsed > 0 else 0
-            print()
-            log_success(f"Hoan tat! {format_size(file_size)} trong {elapsed:.1f}s ({format_size(int(speed))}/s)")
-            print()
+            log_success(f"\n✓ Hoan tat! {format_size(file_size)} trong {elapsed:.1f}s ({format_size(int(speed))}/s)")
+            print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
 
         except Exception as e:
-            print()
-            log_error(f"Ket noi bi ngat: {client_ip}: {e}")
-            print()
+            log_error(f"\nKet noi bi ngat: {client_ip}: {e}")
+            print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
         finally:
             active_downloads.pop(dl_key, None)
 

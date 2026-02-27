@@ -44,8 +44,10 @@ async def _handle_action(request: Request, action: str):
     pending_devices[mac]["status"] = action
     if action == "approved":
         log_success(f"DUYET thiet bi MAC={mac}")
+        print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
     else:
         log_error(f"TU CHOI thiet bi MAC={mac}")
+        print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
 
     await async_save_devices()
     return JSONResponse(content={"ok": True, "status": action})
@@ -81,6 +83,7 @@ async def upload_firmware(file: UploadFile = File(...), version: str = Form(""))
     fw_size = os.path.getsize(dest)
     fw_md5 = calc_md5(dest)
     log_success(f"Upload: {file.filename} ({format_size(fw_size)}) MD5: {fw_md5}")
+    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
 
     return JSONResponse(content={
         "ok": True,
