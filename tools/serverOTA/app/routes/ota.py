@@ -194,6 +194,9 @@ async def _stream_firmware(request: Request, filepath: str):
                             "total": file_size,
                             "ip": client_ip, "mac": mac,
                         }
+                        
+                        # In tiến độ thực ra console (cập nhật trên cùng một dòng)
+                        print(f"\r   ⏳ Đang tải... {percent}% ({format_size(sent)}/{format_size(file_size)}) - Tốc độ: {format_size(int(speed))}/s", end="", flush=True)
 
             elapsed = time.time() - start_time
             speed = file_size / elapsed if elapsed > 0 else 0
