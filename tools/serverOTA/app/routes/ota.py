@@ -85,7 +85,6 @@ async def handle_check_version(request: Request):
     response = {
         "version": version,  # Backward compat: firmware cũ đọc root["version"]
         "firmware": {
-            "version": version,
             "url": firmware_url,
             "force": 0,
         }
@@ -93,6 +92,25 @@ async def handle_check_version(request: Request):
 
     log_info(f"   Response: v{version} | URL: {firmware_url or '(none)'}")
     return JSONResponse(content=response)
+
+
+# ============================================================
+# Backward compat: /validate-token (firmware cũ gọi bước 2)
+# ============================================================
+
+@router.post("/validate-token")
+async def handle_validate_token_compat(request: Request):
+    """Firmware cũ gọi bước 2 validate-token → luôn trả approved"""
+    server_url = config.get_public_url()
+    firmware_url = ""
+    if config.firmware_path and os.path.isfile(config.firmware_path):
+        firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
+
+    log_info(f"🔑 [compat] validate-token tu {request.client.host} → auto approved")
+    return JSONResponse(content={
+        "status": "approved",
+        "firmware_url": firmware_url,
+    })
 
 
 # ============================================================
