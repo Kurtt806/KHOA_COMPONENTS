@@ -88,7 +88,9 @@ function renderDevices(devices, versionClients, activeDownloads) {
 
   let hasAlert = false;
   list.forEach((dev) => {
-    const dl = activeDownloads && activeDownloads[dev.ip];
+    // Match download progress bằng MAC (primary) hoặc IP (fallback)
+    const dl =
+      activeDownloads && (activeDownloads[dev.mac] || activeDownloads[dev.ip]);
     if (dev.ota_status === "pending") hasAlert = true;
 
     // Progress bar

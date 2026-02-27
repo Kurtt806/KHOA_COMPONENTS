@@ -132,16 +132,19 @@ async def _stream_firmware(request: Request, filepath: str):
     file_size = os.path.getsize(filepath)
     filename = os.path.basename(filepath)
     client_ip = request.client.host
-    mac = request.headers.get("Device-Id", "?")
+    mac = request.headers.get("Device-Id", "") or request.headers.get("x-device-mac", "")
+    # Key tracking bằng MAC (unique), fallback IP nếu không có MAC
+    dl_key = mac or client_ip
 
     print()
     log_info(f"{'=' * 50}")
-    log_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac}")
+    log_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END} | MAC: {mac or '?'}")
     log_info(f"   File: {filename} | Size: {format_size(file_size)}")
     log_info(f"{'=' * 50}")
 
-    active_downloads[client_ip] = {
+    active_downloads[dl_key] = {
         "percent": 0, "speed": "0 B/s", "downloaded": 0, "total": file_size,
+        "ip": client_ip, "mac": mac,
     }
 
     async def firmware_generator():
@@ -164,11 +167,12 @@ async def _stream_firmware(request: Request, filepath: str):
                     if cur_time - last_update_time > 0.25:
                         last_update_time = cur_time
                         speed = sent / (cur_time - start_time) if (cur_time - start_time) > 0 else 0
-                        active_downloads[client_ip] = {
+                        active_downloads[dl_key] = {
                             "percent": percent,
                             "speed": f"{format_size(int(speed))}/s",
                             "downloaded": sent,
                             "total": file_size,
+                            "ip": client_ip, "mac": mac,
                         }
 
             elapsed = time.time() - start_time
@@ -182,7 +186,7 @@ async def _stream_firmware(request: Request, filepath: str):
             log_error(f"Ket noi bi ngat: {client_ip}: {e}")
             print()
         finally:
-            active_downloads.pop(client_ip, None)
+            active_downloads.pop(dl_key, None)
 
     return StreamingResponse(
         firmware_generator(),
