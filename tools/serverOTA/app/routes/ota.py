@@ -190,9 +190,11 @@ async def _stream_firmware(request: Request, filepath: str):
                     sent += len(chunk)
                     percent = int((sent * 100) / file_size)
 
-                    # In phần trăm tiến độ ra console mỗi khi nhảy được thêm 10%
-                    if percent > 0 and percent % 10 == 0 and percent != last_logged_percent:
-                        print(f"   ⏳ Dang tai... {percent}%")
+                    # In phần trăm tiến độ ra console mỗi khi nhảy sang 1% mới
+                    if percent != last_logged_percent:
+                        # Log theo định dạng được yêu cầu: [OTA] Tai: XX% (XXX/XXX)
+                        ts = datetime.now().strftime("%H:%M:%S")
+                        print(f"[{ts}] {Colors.BLUE}[OTA] Tai: {percent}% ({sent}/{file_size}){Colors.END}", flush=True)
                         last_logged_percent = percent
 
                     cur_time = time.time()
