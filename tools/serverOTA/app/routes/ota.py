@@ -6,6 +6,7 @@ Bảo mật: Dùng MAC (Device-Id header) làm định danh duy nhất
 """
 
 import os
+import sys
 import time
 from datetime import datetime
 
@@ -164,9 +165,10 @@ async def _stream_firmware(request: Request, filepath: str):
     # Key tracking bằng MAC (unique), fallback IP
     dl_key = mac or client_ip
 
-    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
+    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}", flush=True)
     log_esp_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END}{Colors.BLUE} | MAC: {mac or '?'}")
     log_esp_info(f"   File: {filename} | Size: {format_size(file_size)}")
+    sys.stdout.flush()
 
     active_downloads[dl_key] = {
         "percent": 0, "speed": "0 B/s", "downloaded": 0, "total": file_size,
