@@ -229,6 +229,7 @@ void OtaManager::CheckOnBoot(const std::string& server_input) {
     OtaConfig cfg;
     cfg.url = base_url;
     cfg.auto_restart = true;
+    cfg.buffer_size = 128 * 1024; // 128KB buffer tải
     ota.Initialize(cfg);
 
     // Callback log mặc định

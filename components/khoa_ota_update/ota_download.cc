@@ -4,6 +4,7 @@
  */
 
 #include "ota_manager.h"
+#include "esp_heap_caps.h"
 
 static const char *TAG = "OTA";
 
@@ -33,6 +34,8 @@ esp_err_t OtaManager::PerformOta() {
     http_config.timeout_ms = config_.timeout_ms;
     http_config.max_redirection_count = 3;
     http_config.keep_alive_enable = true;
+    http_config.buffer_size_tx = 4096;
+    http_config.buffer_size = 65536; // 64KB buffer mạng từ PSRAM (RX mặc định)
     configure_ssl(http_config, config_.cert_pem);
 
     esp_http_client_handle_t client = esp_http_client_init(&http_config);
@@ -78,9 +81,14 @@ esp_err_t OtaManager::PerformOta() {
     size_t downloaded = 0;
     int last_percent = -1;
 
-    char *buffer = (char *)malloc(config_.buffer_size);
+    char *buffer = (char *)heap_caps_malloc(config_.buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (buffer == nullptr) {
-        ESP_LOGE(TAG, "Khong du bo nho cap phat buffer!");
+        // Fallback về internal RAM nếu PSRAM không sẵn sàng hoặc hết dung lượng
+        buffer = (char *)malloc(config_.buffer_size);
+    }
+    
+    if (buffer == nullptr) {
+        ESP_LOGE(TAG, "Loi: RAM khong du cho buffer %zu bytes!", config_.buffer_size);
         esp_ota_abort(ota_handle);
         esp_http_client_close(client);
         esp_http_client_cleanup(client);

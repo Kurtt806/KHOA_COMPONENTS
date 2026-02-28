@@ -101,3 +101,15 @@ def read_project_version(search_dir):
             if match:
                 return match.group(1)
     return None
+
+
+def extract_version_from_filename(filename):
+    """
+    Tự động lấy version từ tên file.
+    Hỗ trợ: KHOA_COMPONENTS_v1.0.3.bin -> 1.0.3, v2.0.0.bin -> 2.0.0
+    """
+    # Tìm chuỗi version: [vV] + số.số.số hoặc số.số
+    match = re.search(r'[vV]?(\d+\.\d+(?:\.\d+)?)', filename)
+    if match:
+        return match.group(1)
+    return None

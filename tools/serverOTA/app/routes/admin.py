@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request, UploadFile, File, Form, HTTPException
 
 from app.config import config
 from app.devices import pending_devices, version_clients, active_downloads, stats, async_save_devices
-from app.utils import format_size, calc_md5, log_success, log_error
+from app.utils import format_size, calc_md5, log_success, log_error, extract_version_from_filename
 
 router = APIRouter(prefix="/api")
 
@@ -49,7 +49,12 @@ async def upload_firmware(file: UploadFile = File(...), version: str = Form(""))
         raise HTTPException(status_code=500, detail=str(e))
 
     config.firmware_path = os.path.abspath(dest)
-    if version.strip(): config.ota_version = version.strip()
+    
+    # 1. Ưu tiên version từ form
+    # 2. Nếu trống, tự động lấy từ tên file (vd: KHOA_COMPONENTS_v1.0.3.bin)
+    new_ver = version.strip() or extract_version_from_filename(file.filename)
+    if new_ver:
+        config.ota_version = new_ver
 
     fw_size = os.path.getsize(dest)
     log_success(f"Uploaded: {file.filename} ({format_size(fw_size)}) v{config.ota_version}")

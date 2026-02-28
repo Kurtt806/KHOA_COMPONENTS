@@ -208,7 +208,7 @@ function fetchApiData() {
 
 function handleAction(mac, action) {
   if (mac === "-") return;
-  fetch(`/${action}-device`, {
+  fetch(`/api/${action}-device`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mac }),
