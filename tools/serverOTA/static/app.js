@@ -33,16 +33,16 @@ function formatBytes(bytes) {
   return (bytes / (1024 * 1024)).toFixed(2) + " MB";
 }
 
-function renderDevices(devices, versionClients, activeDownloads) {
+function renderDevices(devices, version_clients, active_downloads) {
   const tbody = document.getElementById("pendingTable").querySelector("tbody");
   tbody.innerHTML = "";
 
-  // Gộp devices + version clients
   const all = {};
 
   if (devices) {
     Object.entries(devices).forEach(([mac, dev]) => {
-      all[dev.ip] = {
+      const key = mac.toLowerCase(); // Chìa khóa chính là MAC
+      all[key] = {
         mac,
         ip: dev.ip,
         chip: dev.chip,
@@ -53,16 +53,21 @@ function renderDevices(devices, versionClients, activeDownloads) {
         ota_status: dev.status || "approved",
         timestamp: dev.timestamp,
         version_checks: 0,
+        is_pending_device: true,
       };
     });
   }
 
-  if (versionClients) {
-    Object.entries(versionClients).forEach(([ip, info]) => {
-      if (all[ip]) {
-        all[ip].version_checks = info.count;
+  if (version_clients) {
+    Object.entries(version_clients).forEach(([ip, info]) => {
+      // Tìm xem có thiết bị nào có MAC đã kết nối từ IP này không
+      const dev_with_ip = Object.values(all).find((d) => d.ip === ip);
+      if (dev_with_ip) {
+        dev_with_ip.version_checks = info.count;
       } else {
-        all[ip] = {
+        // Nếu client chỉ mới check version (chưa gửi MAC) thì dùng IP làm key tạm
+        const key = "ip-" + ip;
+        all[key] = {
           mac: "-",
           ip,
           chip: "-",
@@ -90,7 +95,8 @@ function renderDevices(devices, versionClients, activeDownloads) {
   list.forEach((dev) => {
     // Match download progress bằng MAC (primary) hoặc IP (fallback)
     const dl =
-      activeDownloads && (activeDownloads[dev.mac] || activeDownloads[dev.ip]);
+      active_downloads &&
+      (active_downloads[dev.mac] || active_downloads[dev.ip]);
     if (dev.ota_status === "pending") hasAlert = true;
 
     // Progress bar

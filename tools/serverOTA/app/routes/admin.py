@@ -22,7 +22,7 @@ async def handle_deny(request: Request):
 
 async def _handle_action(request: Request, action: str):
     data = await request.json()
-    mac = data.get("mac", "")
+    mac = data.get("mac", "").lower().strip()
     if not mac or mac not in pending_devices:
         raise HTTPException(status_code=404, detail="Device not found")
 

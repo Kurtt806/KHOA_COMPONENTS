@@ -33,7 +33,7 @@ async def handle_check_version(request: Request):
         try: body = await request.json()
         except: pass
     
-    mac = mac or body.get("mac", "")
+    mac = (mac or body.get("mac", "")).lower().strip()
     device_version = version or body.get("version", "") or request.headers.get("x-device-version", "")
     
     now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
