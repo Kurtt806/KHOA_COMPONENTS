@@ -2,7 +2,9 @@
  * OTA Core - Singleton, khởi tạo, trạng thái, rollback, StartUpdate, CheckOnBoot
  */
 
-#include "ota_common.h"
+#include "ota_manager.h"
+
+static const char *TAG = "OTA";
 
 // ==================== Singleton ====================
 
@@ -22,7 +24,6 @@ void OtaManager::Initialize(const OtaConfig& config) {
     std::lock_guard<std::mutex> lock(mutex_);
     config_ = config;
     initialized_ = true;
-    ESP_LOGI(TAG, "URL: %s", config_.url.c_str());
 }
 
 bool OtaManager::IsInitialized() const {
@@ -128,8 +129,8 @@ esp_err_t OtaManager::StartUpdate() {
         state_ = OtaState::Checking;
     }
 
-    ESP_LOGI(TAG, "==== BAT DAU OTA ====");
-    ESP_LOGI(TAG, "Server: %s | Version: %s", config_.url.c_str(), GetCurrentVersion().c_str());
+    // Log đã rút gọn cho StartUpdate
+    ESP_LOGI(TAG, "Starting Update -> Server: %s | Current Ver: %s", config_.url.c_str(), GetCurrentVersion().c_str());
 
     // Bước 1: Kiểm tra version (retry 3 lần)
     NotifyProgress(OtaState::Checking, 0, 0, 0, "Kiem tra phien ban...");
@@ -153,16 +154,16 @@ esp_err_t OtaManager::StartUpdate() {
     // So sánh version
     std::string cur = GetCurrentVersion();
     if (info.force) {
-        ESP_LOGW(TAG, "[B1] Force update: %s -> %s", cur.c_str(), info.version.c_str());
+        ESP_LOGW(TAG, "Force Update: %s -> %s", cur.c_str(), info.version.c_str());
     } else {
         if (CompareVersion(info.version, cur) <= 0 && !config_.skip_version_check) {
-            ESP_LOGI(TAG, "[B1] Da la phien ban moi nhat (%s)", cur.c_str());
+            ESP_LOGI(TAG, "Already up to date (%s)", cur.c_str());
             NotifyProgress(OtaState::Idle, 0, 0, 0, "Da la moi nhat!");
             std::lock_guard<std::mutex> lock(mutex_);
             state_ = OtaState::Idle;
             return ESP_ERR_INVALID_VERSION;
         }
-        ESP_LOGI(TAG, "[B1] Phien ban moi: %s -> %s", cur.c_str(), info.version.c_str());
+        ESP_LOGI(TAG, "New Version Found: %s -> %s", cur.c_str(), info.version.c_str());
     }
 
     // Cập nhật URL firmware nếu server trả về
@@ -174,17 +175,17 @@ esp_err_t OtaManager::StartUpdate() {
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     // Bước 2: Download firmware
-    ESP_LOGI(TAG, "[B2] Tai firmware: %s", config_.url.c_str());
+    ESP_LOGI(TAG, "Downloading Firmware...");
     ret = PerformOta();
 
     if (ret == ESP_OK) {
-        ESP_LOGI(TAG, "==== OTA THANH CONG ====");
+        ESP_LOGI(TAG, "OTA Completed Successfully!");
         if (config_.auto_restart) {
-            vTaskDelay(pdMS_TO_TICKS(3000));
+            vTaskDelay(pdMS_TO_TICKS(2000));
             Restart();
         }
     } else {
-        ESP_LOGE(TAG, "==== OTA THAT BAI: %s ====", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "OTA Failed: %s", esp_err_to_name(ret));
     }
     return ret;
 }
@@ -207,6 +208,10 @@ std::string OtaManager::BuildBaseUrl(const std::string& input) {
 
 /// Kiểm tra OTA 1 lần khi boot: rollback + ghép URL + tạo task
 void OtaManager::CheckOnBoot(const std::string& server_input) {
+    // Tắt các log nhiễu từ WiFi và Certificate Bundle
+    esp_log_level_set("wifi", ESP_LOG_WARN);
+    esp_log_level_set("esp-x509-crt-bundle", ESP_LOG_WARN);
+
     auto& ota = GetInstance();
 
     // Rollback tự động
@@ -215,8 +220,8 @@ void OtaManager::CheckOnBoot(const std::string& server_input) {
         ESP_LOGI(TAG, "Firmware moi hop le!");
     }
 
-    ESP_LOGI(TAG, "Version: %s | Partition: %s",
-             ota.GetCurrentVersion().c_str(), ota.GetRunningPartitionInfo().c_str());
+    ESP_LOGI(TAG, "Partition: %s | Current Ver: %s",
+             ota.GetRunningPartitionInfo().c_str(), ota.GetCurrentVersion().c_str());
 
     std::string base_url = BuildBaseUrl(server_input);
     if (base_url.empty()) { ESP_LOGW(TAG, "URL OTA rong, bo qua."); return; }
@@ -229,10 +234,10 @@ void OtaManager::CheckOnBoot(const std::string& server_input) {
     // Callback log mặc định
     ota.SetProgressCallback([](const OtaProgress& p) {
         switch (p.state) {
-            case OtaState::Checking:    ESP_LOGI(TAG, "[OTA] Kiem tra..."); break;
-            case OtaState::Downloading: ESP_LOGI(TAG, "[OTA] Tai: %d%% (%zu/%zu)", p.percent, p.bytes_downloaded, p.total_bytes); break;
-            case OtaState::Ready:       ESP_LOGI(TAG, "[OTA] Thanh cong! Restart..."); break;
-            case OtaState::Failed:      ESP_LOGE(TAG, "[OTA] Loi: %s", p.message.c_str()); break;
+            case OtaState::Checking:    ESP_LOGI(TAG, "Checking version from server..."); break;
+            case OtaState::Downloading: ESP_LOGI(TAG, "Downloading: %d%% (%zu/%zu)", p.percent, p.bytes_downloaded, p.total_bytes); break;
+            case OtaState::Ready:       ESP_LOGI(TAG, "Success! Restarting..."); break;
+            case OtaState::Failed:      ESP_LOGE(TAG, "Failed: %s", p.message.c_str()); break;
             default: break;
         }
     });
@@ -242,8 +247,8 @@ void OtaManager::CheckOnBoot(const std::string& server_input) {
     auto task_fn = [](void* arg) {
         auto* url = static_cast<std::string*>(arg);
         esp_err_t ret = OtaManager::GetInstance().StartUpdate();
-        if (ret == ESP_ERR_INVALID_VERSION) ESP_LOGI(TAG, "[OTA] Da la moi nhat.");
-        else if (ret != ESP_OK) ESP_LOGW(TAG, "[OTA] Loi: %s", esp_err_to_name(ret));
+        if (ret == ESP_ERR_INVALID_VERSION) ESP_LOGI(TAG, "Up to date! No need to update.");
+        else if (ret != ESP_OK) ESP_LOGW(TAG, "Error: %s", esp_err_to_name(ret));
         delete url;
         vTaskDelete(NULL);
     };

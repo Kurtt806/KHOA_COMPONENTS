@@ -1,245 +1,136 @@
 """
-OTA Routes - Xử lý luồng OTA 2 bước:
-  B1: POST / → ESP gửi thông tin thiết bị, server trả version + firmware URL
-  B2: GET /firmware.bin → Stream firmware download
-Bảo mật: Dùng MAC (Device-Id header) làm định danh duy nhất
+OTA Routes - Xử lý luồng cập nhật firmware
 """
-
 import os
-import sys
 import time
 from datetime import datetime
-
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.config import config
 from app.devices import (
     pending_devices, version_clients, active_downloads, stats,
-    save_devices, async_save_devices
+    async_save_devices
 )
-from app.utils import (
-    Colors, format_size,
-    log_info, log_esp_info, log_success, log_warning, log_error,
-)
+from app.utils import Colors, format_size, log_esp_info, log_success, log_warning, log_error
 
 router = APIRouter()
-
-
-# ============================================================
-# Bước 1: ESP32 POST thông tin thiết bị, server trả version
-# ============================================================
 
 @router.post("/")
 @router.post("/version.json")
 @router.get("/version.json")
 async def handle_check_version(request: Request):
-    """ESP32 gửi thông tin thiết bị → server trả firmware info (hỗ trợ cả GET và POST)"""
+    """Bước 1: Kiểm tra phiên bản"""
     stats["version_check_count"] += 1
     client_ip = request.client.host
-    mac = request.headers.get("Device-Id", "") or request.headers.get("x-device-mac", "")
-
-    # Parse JSON body (POST) hoặc dùng empty dict (GET)
-    data = {}
-    try:
-        data = await request.json()
-    except Exception:
-        pass  # GET request không có body → bỏ qua
-
-    mac = mac or data.get("mac", "")
-    device_version = data.get("version", "") or request.headers.get("x-device-version", "") or request.query_params.get("v", "")
-    mac = mac or request.query_params.get("mac", "")
-
+    
+    # Lấy info từ Headers hoặc Query hoặc Body
+    mac = request.headers.get("Device-Id") or request.query_params.get("mac")
+    version = request.query_params.get("v")
+    
+    body = {}
+    if request.method == "POST":
+        try: body = await request.json()
+        except: pass
+    
+    mac = mac or body.get("mac", "")
+    device_version = version or body.get("version", "") or request.headers.get("x-device-version", "")
+    
     now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
-    server_url = config.get_public_url()
-    version = config.ota_version or "0.0.0"
-
-    # Cập nhật thông tin thiết bị (chỉ khi có MAC)
+    
+    # Lưu info thiết bị
     if mac:
-        dev_info = {
-            "ip": client_ip,
-            "chip": data.get("chip", ""),
-            "cores": data.get("cores", 0),
-            "flash_kb": data.get("flash_kb", 0),
-            "app_name": data.get("app_name", ""),
-            "app_version": device_version,
-            "timestamp": now,
-            "status": pending_devices.get(mac, {}).get("status", "pending"),
+        pending_devices[mac] = {
+            "ip": client_ip, "chip": body.get("chip", ""), "cores": body.get("cores", 0),
+            "app_name": body.get("app_name", ""), "app_version": device_version,
+            "timestamp": now, "status": pending_devices.get(mac, {}).get("status", "pending"),
         }
-        pending_devices[mac] = dev_info
         await async_save_devices()
 
-    # Ghi nhận version check
-    if client_ip in version_clients:
-        version_clients[client_ip]["count"] += 1
-        version_clients[client_ip]["last_time"] = now
-    else:
-        version_clients[client_ip] = {"count": 1, "last_time": now}
+    # Track client
+    client_stats = version_clients.get(client_ip, {"count": 0})
+    client_stats["count"] += 1
+    client_stats["last_time"] = now
+    version_clients[client_ip] = client_stats
 
-    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-    log_esp_info(f"🔍 [#{stats['version_check_count']}] Check tu {Colors.BOLD}{client_ip}{Colors.END}{Colors.BLUE} | MAC: {mac} | v{device_version}")
+    # Logic duyệt & update
+    fw_url = ""
+    is_approved = (mac and pending_devices.get(mac, {}).get("status") == "approved")
+    needs_update = (device_version != config.ota_version)
 
-    # Khởi tạo response (mặc định không có link firmware)
-    firmware_url = ""
-    
-    # Chỉ trả về link firmware nếu thiết bị đã được admin duyệt (approved)
-    is_approved = False
-    if mac and mac in pending_devices:
-        is_approved = (pending_devices[mac].get("status") == "approved")
+    if is_approved and needs_update and config.firmware_path:
+        fw_url = f"{config.get_public_url()}/{os.path.basename(config.firmware_path)}"
 
-    # Kiểm tra version: chỉ trả firmware url nếu version thiết bị khác với server
-    needs_update = (device_version != version)
+    log_esp_info(f"🔍 [#{stats['version_check_count']}] {client_ip} ({mac}) v{device_version} -> v{config.ota_version} | {'OK' if fw_url else 'SKIP'}")
 
-    if is_approved and needs_update and config.firmware_path and os.path.isfile(config.firmware_path):
-        firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
-
-    response = {
-        "version": version,  # Backward compat: firmware cũ đọc root["version"]
-        "firmware": {
-            "version": version,
-            "url": firmware_url,
-            "force": 0,
-        }
+    return {
+        "version": config.ota_version,
+        "firmware": {"version": config.ota_version, "url": fw_url, "force": 0}
     }
-
-    url_str = firmware_url if firmware_url else "(none)"
-    log_esp_info(f"   Response: v{device_version} -> v{version} | URL: {url_str}")
-    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-
-    return JSONResponse(content=response)
-
-
-# ============================================================
-# Backward compat: /validate-token (firmware cũ gọi bước 2)
-# ============================================================
-
-@router.post("/validate-token")
-async def handle_validate_token_compat(request: Request):
-    """Firmware cũ gọi bước 2 validate-token → luôn trả approved"""
-    server_url = config.get_public_url()
-    firmware_url = ""
-    if config.firmware_path and os.path.isfile(config.firmware_path):
-        firmware_url = f"{server_url}/{os.path.basename(config.firmware_path)}"
-
-    log_info(f"🔑 [compat] validate-token tu {request.client.host} → auto approved")
-    return JSONResponse(content={
-        "status": "approved",
-        "firmware_url": firmware_url,
-    })
-
-
-# ============================================================
-# Bước 2: ESP32 download firmware (streaming với progress)
-# ============================================================
 
 @router.get("/firmware.bin")
 async def serve_firmware_default(request: Request):
-    """Endpoint mặc định để download firmware"""
     if not config.firmware_path or not os.path.isfile(config.firmware_path):
-        raise HTTPException(status_code=404, detail="Firmware not found")
+        raise HTTPException(status_code=404, detail="Firmware file not found")
     return await _stream_firmware(request, config.firmware_path)
 
-
 async def _stream_firmware(request: Request, filepath: str):
-    """Stream firmware file với progress log realtime"""
+    """Stream firmware với progress log"""
+    client_ip = request.client.host
+    mac = request.headers.get("Device-Id")
+    
+    # Lookup MAC by IP if missing (compat)
+    if not mac:
+        mac = next((m for m, d in pending_devices.items() if d.get("ip") == client_ip), None)
+
+    # Auth check
+    if not mac or pending_devices.get(mac, {}).get("status") != "approved":
+        log_warning(f"⛔ Unauthorized download: {client_ip} ({mac})")
+        raise HTTPException(status_code=403, detail="Device not approved")
+
     stats["download_count"] += 1
-    count = stats["download_count"]
     file_size = os.path.getsize(filepath)
     filename = os.path.basename(filepath)
-    client_ip = request.client.host
-    mac = request.headers.get("Device-Id", "") or request.headers.get("x-device-mac", "")
+    dl_key = mac
+    
+    log_esp_info(f"📥 OTA #{stats['download_count']} starting: {filename} ({format_size(file_size)}) to {client_ip}")
 
-    # Nếu không có MAC trong header (firmware cũ), lookup từ pending_devices bằng IP
-    if not mac:
-        for m, d in pending_devices.items():
-            if d.get("ip") == client_ip:
-                mac = m
-                break
-
-    # Kiểm tra quyền truy cập: Chỉ thiết bị "approved" mới được tải
-    if not mac or mac not in pending_devices or pending_devices[mac].get("status") != "approved":
-        print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-        log_warning(f"⛔ Tu choi download tu {client_ip} | MAC: {mac} (Chua duoc duyet)")
-        raise HTTPException(status_code=403, detail="Thiet bi chua duoc duyet (Not Approved)")
-
-    # Key tracking bằng MAC (unique), fallback IP
-    dl_key = mac or client_ip
-
-    print(f"{Colors.CYAN}{'─' * 50}{Colors.END}", flush=True)
-    log_esp_info(f"📥 OTA #{count} tu {Colors.BOLD}{client_ip}{Colors.END}{Colors.BLUE} | MAC: {mac or '?'}")
-    log_esp_info(f"   File: {filename} | Size: {format_size(file_size)}")
-    sys.stdout.flush()
-
-    active_downloads[dl_key] = {
-        "percent": 0, "speed": "0 B/s", "downloaded": 0, "total": file_size,
-        "ip": client_ip, "mac": mac,
-    }
-
-    async def firmware_generator():
-        """Stream firmware từng chunk 4KB"""
+    async def gen():
         sent = 0
-        start_time = time.time()
-        last_update_time = start_time
-        last_logged_percent = -1
-
+        last_pct = -1
+        start_t = time.time()
         try:
             with open(filepath, 'rb') as f:
-                while True:
-                    chunk = f.read(4096)
-                    if not chunk:
-                        break
+                while chunk := f.read(8192): # Tăng chunk size lên 8KB
                     yield chunk
                     sent += len(chunk)
-                    percent = int((sent * 100) / file_size)
-
-                    # In phần trăm tiến độ ra console mỗi khi nhảy sang 1% mới
-                    if percent != last_logged_percent:
-                        # Log theo định dạng được yêu cầu: [OTA] Tai: XX% (XXX/XXX)
-                        ts = datetime.now().strftime("%H:%M:%S")
-                        print(f"[{ts}] {Colors.BLUE}[OTA] Tai: {percent}% ({sent}/{file_size}){Colors.END}", flush=True)
-                        last_logged_percent = percent
-
-                    cur_time = time.time()
-                    if cur_time - last_update_time > 0.25:
-                        last_update_time = cur_time
-                        speed = sent / (cur_time - start_time) if (cur_time - start_time) > 0 else 0
-                        active_downloads[dl_key] = {
-                            "percent": percent,
-                            "speed": f"{format_size(int(speed))}/s",
-                            "downloaded": sent,
-                            "total": file_size,
-                            "ip": client_ip, "mac": mac,
-                        }
-
-            elapsed = time.time() - start_time
-            speed = file_size / elapsed if elapsed > 0 else 0
-            log_success(f"\n✓ Hoan tat! {format_size(file_size)} trong {elapsed:.1f}s ({format_size(int(speed))}/s)")
-            print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
-
+                    pct = int(sent * 100 / file_size)
+                    if pct != last_pct:
+                        print(f"[{datetime.now().strftime('%H:%M:%S')}] {Colors.BLUE}[OTA] Tai: {pct}% ({sent}/{file_size}){Colors.END}", flush=True)
+                        last_pct = pct
+                    
+                    # Cập nhật global stats cho dashboard
+                    active_downloads[dl_key] = {"percent": pct, "downloaded": sent, "total": file_size, "ip": client_ip}
+            
+            dur = time.time() - start_t
+            log_success(f"✓ Download complete in {dur:.1f}s")
         except Exception as e:
-            log_error(f"\nKet noi bi ngat: {client_ip}: {e}")
-            print(f"{Colors.CYAN}{'─' * 50}{Colors.END}")
+            log_error(f"✗ Download failed: {e}")
         finally:
             active_downloads.pop(dl_key, None)
 
-    return StreamingResponse(
-        firmware_generator(),
-        media_type="application/octet-stream",
-        headers={
-            "Content-Length": str(file_size),
-            "Content-Disposition": f'attachment; filename="{filename}"',
-        },
-    )
-
+    return StreamingResponse(gen(), media_type="application/octet-stream", headers={
+        "Content-Length": str(file_size),
+        "Content-Disposition": f'attachment; filename="{filename}"'
+    })
 
 async def serve_firmware_by_name(filename: str, request: Request):
-    """Phục vụ firmware theo tên file .bin"""
+    target = None
     if config.firmware_path and os.path.basename(config.firmware_path) == filename:
-        return await _stream_firmware(request, config.firmware_path)
-
-    if config.firmware_dir:
-        filepath = os.path.join(config.firmware_dir, filename)
-        if os.path.isfile(filepath):
-            return await _stream_firmware(request, filepath)
-
-    raise HTTPException(status_code=404, detail="Khong tim thay firmware")
+        target = config.firmware_path
+    elif config.firmware_dir:
+        path = os.path.join(config.firmware_dir, filename)
+        if os.path.isfile(path): target = path
+    
+    if target: return await _stream_firmware(request, target)
+    raise HTTPException(status_code=404, detail="Firmware not found")

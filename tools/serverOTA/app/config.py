@@ -1,88 +1,79 @@
 """
-Config module - Cấu hình server từ ENV (Docker) hoặc CLI args
+Config module - Quản lý cấu hình server OTA
 """
 
 import os
 import argparse
 from typing import Optional
+from pathlib import Path
 from app.utils import log_info, log_warning, find_firmware, read_project_version
 
-
 class AppConfig:
-    """Cấu hình server toàn cục"""
-    firmware_path: Optional[str] = None
-    firmware_dir: Optional[str] = None
-    ota_version: str = "0.0.0"
-    port: int = 8080
-    bind: str = "0.0.0.0"
-    base_url: Optional[str] = None  # URL public (VD: https://ota.vibohub.com)
+    def __init__(self):
+        self.port: int = int(os.environ.get("OTA_PORT", "8080"))
+        self.bind: str = os.environ.get("OTA_BIND", "0.0.0.0")
+        self.ota_version: str = os.environ.get("OTA_VERSION", "0.0.0")
+        self.base_url: Optional[str] = os.environ.get("OTA_BASE_URL")
+        
+        self.firmware_path: Optional[str] = os.environ.get("OTA_FIRMWARE")
+        self.firmware_dir: str = os.environ.get("OTA_FIRMWARE_DIR", "/firmware")
+        
+        # Đường dẫn dữ liệu
+        self.data_dir: str = os.environ.get("OTA_DATA_DIR", "/data")
+        self.devices_file: str = os.path.join(self.data_dir, "ota_devices.json")
+        
+        # Đường dẫn code
+        self.script_dir: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.static_dir: str = os.path.join(self.script_dir, "static")
+        self.templates_dir: str = os.path.join(self.script_dir, "templates")
+
+    def auto_detect(self):
+        """Tự động tìm firmware và version từ môi trường xung quanh"""
+        # 1. Tìm Firmware
+        if self.firmware_path and os.path.isfile(self.firmware_path):
+            self.firmware_path = os.path.abspath(self.firmware_path)
+            self.firmware_dir = os.path.dirname(self.firmware_path)
+        else:
+            # Tìm trong các folder khả nghi
+            for search in [self.firmware_dir, ".", self.script_dir]:
+                if os.path.isdir(search):
+                    fw = find_firmware(search)
+                    if fw:
+                        self.firmware_path = fw
+                        self.firmware_dir = os.path.abspath(search)
+                        break
+
+        # 2. Tìm Version từ CMakeLists.txt nếu chưa có
+        if self.ota_version == "0.0.0":
+            search_dir = self.firmware_dir or '.'
+            auto_ver = read_project_version(search_dir)
+            if auto_ver:
+                self.ota_version = auto_ver
+                log_info(f"Auto-detected version: {auto_ver}")
+
+    def load_args(self):
+        """Ghi đè cấu hình từ CLI args"""
+        parser = argparse.ArgumentParser(description='OTA Server for ESP32')
+        parser.add_argument('--port', '-p', type=int, help='Server port')
+        parser.add_argument('--bind', '-b', type=str, help='Bind address')
+        parser.add_argument('--firmware', '-f', type=str, help='Path to firmware .bin')
+        parser.add_argument('--version', '-v', type=str, help='Firmware version')
+        
+        args, _ = parser.parse_known_args()
+        if args.port: self.port = args.port
+        if args.bind: self.bind = args.bind
+        if args.firmware: self.firmware_path = os.path.abspath(args.firmware)
+        if args.version: self.ota_version = args.version
 
     def get_public_url(self) -> str:
-        """URL public cho ESP32 truy cập"""
         if self.base_url:
             return self.base_url.rstrip('/')
         from app.utils import get_local_ip
         return f"http://{get_local_ip()}:{self.port}"
 
-
+# Singleton instance
 config = AppConfig()
-
-# Đường dẫn file dữ liệu
-DATA_DIR = os.environ.get("OTA_DATA_DIR", "/data")
-DEVICES_FILE = os.path.join(DATA_DIR, "ota_devices.json")
-
-SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_DIR = os.path.join(SCRIPT_DIR, "static")
-TEMPLATES_DIR = os.path.join(SCRIPT_DIR, "templates")
-
-
-def configure_from_env_and_args():
-    """Đọc config từ ENV hoặc CLI args"""
-    env_firmware = os.environ.get("OTA_FIRMWARE")
-    env_firmware_dir = os.environ.get("OTA_FIRMWARE_DIR", "/firmware")
-    env_version = os.environ.get("OTA_VERSION")
-    env_port = os.environ.get("OTA_PORT", "8080")
-    env_bind = os.environ.get("OTA_BIND", "0.0.0.0")
-
-    parser = argparse.ArgumentParser(description='OTA Server - Phuc vu firmware ESP32')
-    parser.add_argument('--port', '-p', type=int, default=int(env_port))
-    parser.add_argument('--firmware', '-f', type=str, default=env_firmware)
-    parser.add_argument('--dir', '-d', type=str, default=env_firmware_dir)
-    parser.add_argument('--bind', '-b', type=str, default=env_bind)
-    parser.add_argument('--version', '-v', type=str, default=env_version)
-
-    args = parser.parse_args()
-
-    config.port = args.port
-    config.bind = args.bind
-
-    # Firmware path
-    if args.firmware and os.path.isfile(args.firmware):
-        config.firmware_path = os.path.abspath(args.firmware)
-        config.firmware_dir = os.path.dirname(config.firmware_path)
-    elif args.dir and os.path.isdir(args.dir):
-        config.firmware_dir = os.path.abspath(args.dir)
-        fw = find_firmware(args.dir)
-        if fw:
-            config.firmware_path = fw
-    else:
-        for search in ["/firmware", ".", SCRIPT_DIR]:
-            if os.path.isdir(search):
-                fw = find_firmware(search)
-                if fw:
-                    config.firmware_path = fw
-                    config.firmware_dir = search
-                    break
-
-    # Version
-    if args.version:
-        config.ota_version = args.version
-    else:
-        search_dir = config.firmware_dir or '.'
-        auto_version = read_project_version(search_dir)
-        if auto_version:
-            config.ota_version = auto_version
-            log_info(f"Auto version tu CMakeLists.txt: {auto_version}")
-        else:
-            config.ota_version = "0.0.0"
-            log_warning("Khong tim thay PROJECT_VER, dung 0.0.0")
+DATA_DIR = config.data_dir
+DEVICES_FILE = config.devices_file
+STATIC_DIR = config.static_dir
+TEMPLATES_DIR = config.templates_dir

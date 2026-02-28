@@ -3,7 +3,9 @@
  * Gửi POST lên server với thông tin thiết bị, nhận JSON firmware info
  */
 
-#include "ota_common.h"
+#include "ota_manager.h"
+
+static const char *TAG = "OTA";
 
 /// Gọi POST lên server, gửi thông tin thiết bị, nhận version + firmware URL
 esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
@@ -42,8 +44,6 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
     cJSON_Delete(body);
     if (!body_str) return ESP_FAIL;
 
-    ESP_LOGI(TAG, "[B1] POST %s", url.c_str());
-
     // HTTP client
     HttpResponseCtx ctx = {(char*)calloc(1, 2049), 0, 2048};
     if (!ctx.buf) { free(body_str); return ESP_ERR_NO_MEM; }
@@ -72,13 +72,12 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
 
     if (err != ESP_OK) { free(ctx.buf); return err; }
     if (status != 200 || ctx.len <= 0) {
-        ESP_LOGE(TAG, "[B1] HTTP %d", status);
+        ESP_LOGE(TAG, "HTTP %d", status);
         free(ctx.buf);
         return ESP_FAIL;
     }
 
     ctx.buf[ctx.len] = '\0';
-    ESP_LOGI(TAG, "[B1] Response: %s", ctx.buf);
 
     // Parse JSON: { firmware: { version, url, force } }
     cJSON* root = cJSON_Parse(ctx.buf);
@@ -99,11 +98,8 @@ esp_err_t OtaManager::FetchVersionInfo(VersionInfo& out_info) {
     }
     cJSON_Delete(root);
 
-    if (!ok) { ESP_LOGE(TAG, "[B1] Thieu firmware.version!"); return ESP_ERR_INVALID_RESPONSE; }
-
-    ESP_LOGI(TAG, "[B1] Server: v%s | URL: %s | Force: %s",
+    ESP_LOGI(TAG, "Server Version: %s (Force: %s)",
              out_info.version.c_str(),
-             out_info.firmware_url.empty() ? "(goc)" : out_info.firmware_url.c_str(),
              out_info.force ? "YES" : "NO");
     return ESP_OK;
 }

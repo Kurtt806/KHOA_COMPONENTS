@@ -3,7 +3,9 @@
  * Kết nối HTTP(S) → đọc từng chunk → ghi vào phân vùng OTA
  */
 
-#include "ota_common.h"
+#include "ota_manager.h"
+
+static const char *TAG = "OTA";
 
 /// Thực hiện tải và ghi firmware OTA nội bộ (Bước 3)
 esp_err_t OtaManager::PerformOta() {
@@ -21,10 +23,7 @@ esp_err_t OtaManager::PerformOta() {
         return ESP_ERR_NOT_FOUND;
     }
 
-    ESP_LOGI(TAG, "Phan vung dang chay: %s (offset 0x%08" PRIx32 ")", 
-             running->label, running->address);
-    ESP_LOGI(TAG, "Phan vung cap nhat: %s (offset 0x%08" PRIx32 ")", 
-             update_partition->label, update_partition->address);
+    ESP_LOGI(TAG, "Target Partition: %s", update_partition->label);
 
     // === Kết nối HTTP và tải firmware ===
     NotifyProgress(OtaState::Downloading, 0, 0, 0, "Dang ket noi server...");
@@ -121,10 +120,10 @@ esp_err_t OtaManager::PerformOta() {
 
         if (read_len == 0) {
             if (esp_http_client_is_complete_data_received(client)) {
-                ESP_LOGI(TAG, "Da tai xong firmware!");
+                ESP_LOGI(TAG, "Download Complete!");
                 break;
             }
-            ESP_LOGE(TAG, "Ket noi bi ngat truoc khi tai xong!");
+            ESP_LOGE(TAG, "Connection lost!");
             free(buffer);
             esp_ota_abort(ota_handle);
             esp_http_client_close(client);
@@ -167,7 +166,7 @@ esp_err_t OtaManager::PerformOta() {
     esp_http_client_close(client);
     esp_http_client_cleanup(client);
 
-    ESP_LOGI(TAG, "Tong cong da tai: %zu bytes", downloaded);
+    ESP_LOGI(TAG, "Total Downloaded: %zu bytes", downloaded);
 
     // === Xác minh và hoàn tất ===
     NotifyProgress(OtaState::Verifying, 100, downloaded, total_bytes, "Dang xac minh firmware...");
@@ -175,9 +174,9 @@ esp_err_t OtaManager::PerformOta() {
     err = esp_ota_end(ota_handle);
     if (err != ESP_OK) {
         if (err == ESP_ERR_OTA_VALIDATE_FAILED) {
-            ESP_LOGE(TAG, "Firmware khong hop le (checksum sai)!");
+            ESP_LOGE(TAG, "Invalid Firmware (Checksum error)!");
         } else {
-            ESP_LOGE(TAG, "esp_ota_end that bai: %s", esp_err_to_name(err));
+            ESP_LOGE(TAG, "esp_ota_end failed: %s", esp_err_to_name(err));
         }
         NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Firmware khong hop le!");
         return err;
@@ -186,14 +185,14 @@ esp_err_t OtaManager::PerformOta() {
     // Đặt phân vùng boot mới
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_ota_set_boot_partition that bai: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "esp_ota_set_boot_partition failed: %s", esp_err_to_name(err));
         NotifyProgress(OtaState::Failed, 0, downloaded, total_bytes, "Loi dat phan vung boot!");
         return err;
     }
 
     NotifyProgress(OtaState::Ready, 100, downloaded, total_bytes, 
                    "Cap nhat thanh cong! Can khoi dong lai.");
-    ESP_LOGI(TAG, "Firmware moi da san sang tai phan vung: %s", update_partition->label);
+    ESP_LOGI(TAG, "Update Success! Target: %s", update_partition->label);
 
     return ESP_OK;
 }
